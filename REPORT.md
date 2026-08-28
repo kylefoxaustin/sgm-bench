@@ -135,6 +135,12 @@ i.MX 95 FRDM, `OMP_NUM_THREADS` unset, golden `b1b407b5949f0cc1` on all four):
 be slow, so it inflates single-thread baselines and thereby flatters whatever
 they are compared against. That is the dangerous direction, and it is silent.
 
+⚠️ **And the magnitude is core-dependent: 4.63× on A55, 2.6× on A78C.** The
+inert flag understated by however much that particular machine happened to
+scale, so **no single correction factor exists** — affected data cannot be
+repaired by arithmetic, only by re-running it. (Observation due to the qualcomm
+session.)
+
 **The published numbers above are unaffected**, and the reason is not "our
 wrapper set `OMP_NUM_THREADS`" (it did — `scripts/pin.sh:57` — but that is luck,
 not design). It is that **under this bug every thread count collapses to the
