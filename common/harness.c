@@ -21,6 +21,9 @@
 #include <string.h>
 #include <time.h>
 #include <sched.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include "sgm.h"
 
 #ifndef CFLAGS_STR
@@ -58,6 +61,34 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--board") && i + 1 < argc) board = argv[++i];
         else { fprintf(stderr, "unknown arg %s\n", argv[i]); return 1; }
     }
+
+    /* -t is authoritative, and what gets REPORTED is what the runtime actually
+     * used -- not what was asked for.
+     *
+     * It was neither, until 2026-08-28. Every impl takes `threads` and drops it
+     * ((void)threads), because thread count comes from OpenMP; so -t was parsed,
+     * printed in the table, written to the JSON as "threads":N -- and ignored.
+     * A `-t 1` run emitted a row LABELLED single-thread holding an all-core
+     * timing. Found by the qualcomm session on a Cortex-A78C, where -t 1 / -t 6
+     * / -t 8 all returned ~115 ms and would have published a single-thread
+     * baseline 2.6x too fast. Note the direction: the error flatters whatever
+     * the run is being compared against. Our own numbers escaped only because
+     * scripts/pin.sh sets OMP_NUM_THREADS -- a wrapper, not a design.
+     *
+     * Hence two changes, not one: the flag now binds, AND the count is read
+     * back from the runtime, so a future divergence surfaces as a warning
+     * instead of a plausible number. */
+    int threads_actual = 0;
+#ifdef _OPENMP
+    if (threads > 0) omp_set_num_threads(threads);
+    threads_actual = omp_get_max_threads();
+    if (threads > 0 && threads_actual != threads)
+        fprintf(stderr, "WARNING: requested -t %d but the OpenMP runtime reports %d; "
+                        "reporting %d\n", threads, threads_actual, threads_actual);
+#else
+    if (threads > 0)
+        fprintf(stderr, "WARNING: -t %d ignored, built without OpenMP\n", threads);
+#endif
 
     int W, H, W2, H2;
     uint8_t *L = pgm_read(lpath, &W, &H);
@@ -102,7 +133,7 @@ int main(int argc, char **argv) {
 
     char mask[512]; cpu_mask_string(mask, sizeof mask);
     printf("%-12s %dx%d D=%d paths=%d th=%d  median %8.2f ms  p95 %8.2f  min %8.2f  fps %7.2f  Mpix/s %7.2f  hash %016llx%s\n",
-           SGM_IMPL.name, W, H, SGM_D, SGM_PATHS, threads, med, p95, mn, fps, mpix,
+           SGM_IMPL.name, W, H, SGM_D, SGM_PATHS, threads_actual, med, p95, mn, fps, mpix,
            (unsigned long long)hash, golden_match == 1 ? "  GOLDEN OK" : golden_match == 0 ? "  GOLDEN FAIL" : "");
 
     if (jpath) {
@@ -110,12 +141,12 @@ int main(int argc, char **argv) {
         if (!f) { fprintf(stderr, "cannot open %s\n", jpath); return 1; }
         time_t now = time(NULL); char ts[64]; strftime(ts, sizeof ts, "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
         fprintf(f, "{\"impl\":\"%s\",\"board\":\"%s\",\"W\":%d,\"H\":%d,\"D\":%d,\"paths\":%d,\"census\":\"%dx%d\",\"P1\":%d,\"P2\":%d,"
-                   "\"threads\":%d,\"cpu_mask\":\"%s\",\"warm\":%d,\"timed\":%d,"
+                   "\"threads\":%d,\"threads_requested\":%d,\"cpu_mask\":\"%s\",\"warm\":%d,\"timed\":%d,"
                    "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"fps\":%.3f,\"mpix_s\":%.3f,"
                    "\"census_ms\":%.3f,\"cost_ms\":%.3f,\"aggregate_ms\":%.3f,\"argmin_ms\":%.3f,"
                    "\"hash\":\"%016llx\",\"golden_match\":%d,\"cflags\":\"%s\",\"git\":\"%s\",\"ts\":\"%s\"}\n",
                 SGM_IMPL.name, board, W, H, SGM_D, SGM_PATHS, SGM_CENSUS_W, SGM_CENSUS_H, SGM_P1, SGM_P2,
-                threads, mask, warm, timed, med, p95, mn, fps, mpix,
+                threads_actual, threads, mask, warm, timed, med, p95, mn, fps, mpix,
                 st.census_ms, st.cost_ms, st.aggregate_ms, st.argmin_ms,
                 (unsigned long long)hash, golden_match, CFLAGS_STR, GIT_SHA, ts);
         fclose(f);

@@ -14,10 +14,11 @@ against a measured one without saying so.
 published Arm-CPU SGM, bit-exact.**
 
 Bit-exact means byte-identical to a scalar reference implementation, verified
-on every run. The same golden hash (`b1b407b5949f0cc1`) is produced by **five
-independent execution targets**: x86-64, Cortex-A55, Cortex-A720, and two Mali
-GPUs through OpenCL. A run whose hash does not match is void and its timing is
-discarded.
+on every run. The same golden hash (`b1b407b5949f0cc1`) is produced by **seven
+independent execution targets**: x86-64, Cortex-A55, Cortex-A720, Cortex-A78C,
+two Mali GPUs through OpenCL, and a Hexagon v73 NSP through FastRPC — three
+vendors, four instruction sets, three processor classes. A run whose hash does
+not match is void and its timing is discarded.
 
 ---
 
@@ -38,16 +39,24 @@ D but **not** census window or path count.
 | 8× Cortex-A720 | D=128 | 8 | 105.9 | 9.5 | 19.59 | 2,507 | — |
 | 1× Cortex-A720 @2.5 GHz | D=64 | 1 | 313.6 | 3.2 | 6.61 | 423 | **423** |
 | **6× Cortex-A55** @1.8 GHz (i.MX 95 FRDM) | D=64 | 6 | 341.3 | 2.9 | 6.08 | **389** | 82 |
-| **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 3.79 | **1,402** | 402 |
+| **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
-| Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.5 | 1.12 | 72 | — |
-| scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14 | — |
+| Hexagon v73 NSP (IQ-9075, FastRPC) § | D=64 | 6 | 1784.1 | 0.56 | 1.16 | 74 | — |
+| Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
+| scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
 ‡ **Controlled cross-vendor comparison, contributed by the qualcomm session.**
 Not an estimate and not a different implementation: they ran *this repository's*
 `a55` NEON implementation unmodified, verified the input PGMs on-board against
 the published sha256, and reproduced the golden FNV-1a `b1b407b5949f0cc1` at
 every thread count. Same D, paths, census window and penalties. MEASURED.
+
+§ **Hexagon row is a different implementation** — an independent HVX/FastRPC
+port written by the qualcomm session, not this repository's NEON code. What is
+shared is the *specification and the acceptance test*: identical D, paths,
+census window, penalties, and the same golden hash `b1b407b5949f0cc1`, held at
+1, 2, 4 and 6 DSP threads, with inputs sha256-verified on the board. MEASURED
+on their hardware; reproduced here by trust in that hash, not by my own run.
 
 ⚠️ Their best is at **six** threads, not eight — 8 threads is *slower* (1,155 vs
 1,402 MDE/s). They report the same inversion on an unrelated workload
@@ -60,8 +69,85 @@ A720 423 MDE/s — a 5% gap that needs no explanation.** Two wide out-of-order A
 cores from different vendors land in the same place on this algorithm, which is
 a stronger statement about SGM than about either core.
 
+### Two wide architectures, two vendors, same loss
+
+The Mali G720 (518 MDE/s) loses to **two** A720 cores. The Hexagon v73 NSP
+(74 MDE/s) loses to its own die's A78C cluster by **18.7×** — same board, same
+session, same golden. That ratio deliberately uses their *same-session* A78C
+re-run (95.51 ms) rather than the 94.7 ms in the table above: comparing two
+numbers taken minutes apart on one machine is worth more than comparing across
+sessions, and the two agree to 0.6% anyway. Two independent wide-SIMD units, from two vendors,
+both beaten by the out-of-order CPU on this algorithm.
+
+The mechanism is the same one that shaped every optimisation in this repo:
+**SGM's aggregation is a serial recurrence in x or y.** `L(d)` at one pixel
+needs `L(d)` at the previous one, so the only parallelism is across disparities
+and across independent scanlines. A wide unit can fill lanes but cannot hide
+the dependency, and an OoO core's deep window absorbs exactly this shape.
+
+⚠️ **Honest bounds on that claim.** The 18.7× is MEASURED for the port as it
+exists; it is *not* the DSP's floor. In that port census is still scalar and is
+the largest phase (36–43%), argmin and cost are scalar, and D=64 fills only 64
+of 128 byte lanes. The qualcomm session's own ceiling for the remaining work is
+**~200–250 MDE/s — DERIVED, not measured** — still 5–7× short of the A78C. So
+"the DSP cannot win here" is a *judgement* resting on a measurement, and is
+labelled as such rather than promoted into the headline.
+
+⭐ Structural detail worth keeping: the NSP has **six hardware threads but only
+four HVX contexts**, read on the board. That is why DSP scaling saturates at
+four (3.59× at 4 threads, 3.76× at 6) — a hardware limit, not a code one.
+
+⚠️ **Their trap is our failure shape.** HVX widening is *deinterleaved* — the
+low vector holds even-indexed bytes, not bytes 0..63 — so their first kernel was
+**3× faster with a wrong hash**: a plausible disparity map, no crash, no zeros,
+no warning. It was caught only because this harness gates the hash in the same
+run that produces the timing. That design choice has now paid for itself on
+hardware I have never touched.
+
 Power: **blank, deliberately.** No board here exposes a usable rail for the
 CPU block alone, and rule 6 says leave the cell empty rather than estimate.
+
+---
+
+## 🚨 A defect in this harness, found by someone else
+
+**Until 2026-08-28 the `-t` flag did nothing.** Every implementation takes a
+`threads` argument and discards it (`(void)threads`) because the count comes
+from OpenMP. So `-t` was parsed, printed in the results table, and written to
+the JSON as `"threads":N` — while the run used whatever `OMP_NUM_THREADS` said.
+A `-t 1` run emitted a row **labelled single-thread containing an all-core
+timing**.
+
+Found by the **qualcomm session**, not by me, on a Cortex-A78C where `-t 1`,
+`-t 6` and `-t 8` all returned ~115 ms. They caught it before publishing; had
+they not, their single-thread baseline would have been 2.6× too fast — and
+their DSP comparison correspondingly flattered.
+
+Controlled A/B on 6× A55 confirming both the defect and the fix (MEASURED,
+i.MX 95 FRDM, `OMP_NUM_THREADS` unset, golden `b1b407b5949f0cc1` on all four):
+
+| harness | `-t 1` | `-t 6` | ratio |
+|---|---|---|---|
+| before | 344.29 ms | 342.65 ms | **1.00× — flag inert** |
+| after  | 1588.74 ms | 342.75 ms | 4.63× |
+
+**Note the direction.** The error always shortens the run that was *asked* to
+be slow, so it inflates single-thread baselines and thereby flatters whatever
+they are compared against. That is the dangerous direction, and it is silent.
+
+**The published numbers above are unaffected**, and the reason is not "our
+wrapper set `OMP_NUM_THREADS`" (it did — `scripts/pin.sh:57` — but that is luck,
+not design). It is that **under this bug every thread count collapses to the
+same timing**, and the tables do not: A720 spreads 6.07× from 1→8 threads, A55
+4.65× from 1→6. Real scaling is proof the flag was working on those runs.
+Independent confirmation: the A55 per-core figure of 82 MDE/s published before
+the bug was known matches the 83.5 MDE/s measured today while testing the fix.
+
+Fixed in `common/harness.c`: `-t` now calls `omp_set_num_threads()`, and the
+count that reaches the table and the JSON is **read back** from the runtime
+(`omp_get_max_threads()`) rather than echoed from the command line, with the
+requested value kept alongside as `threads_requested`. A future divergence
+surfaces as a warning instead of a plausible number.
 
 ---
 
