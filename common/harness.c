@@ -1,0 +1,125 @@
+/* harness.c — one binary per implementation, same behaviour for all.
+ *
+ *   sgm_<impl> LEFT.pgm RIGHT.pgm [options]
+ *     -o OUT.pgm        write disparity map
+ *     -g GOLDEN.pgm     compare against golden map (exit 2 on mismatch)
+ *     -t THREADS        thread count passed to the implementation (0 = default)
+ *     -w N              warm-up frames (default 10)
+ *     -n N              timed frames   (default 100)
+ *     -j RESULTS.json   append a results record
+ *     --board NAME      free text recorded in the JSON
+ *
+ * Prints a one-line summary and (optionally) a JSON record containing:
+ * impl, board, W, H, D, paths, census, P1, P2, threads, cpu mask, warm/timed
+ * counts, median/p95/min ms, fps, Mpix/s, per-stage ms (last frame), output
+ * FNV-1a hash, golden match, compiler + flags, git sha (if provided via
+ * -DGIT_SHA), timestamp.
+ */
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sched.h>
+#include "sgm.h"
+
+#ifndef CFLAGS_STR
+#define CFLAGS_STR "unknown"
+#endif
+#ifndef GIT_SHA
+#define GIT_SHA "unknown"
+#endif
+
+static int cmp_double(const void *a, const void *b) {
+    double x = *(const double *)a, y = *(const double *)b;
+    return (x > y) - (x < y);
+}
+
+static void cpu_mask_string(char *buf, size_t n) {
+    cpu_set_t set; CPU_ZERO(&set);
+    buf[0] = 0;
+    if (sched_getaffinity(0, sizeof set, &set) != 0) { snprintf(buf, n, "?"); return; }
+    size_t len = 0;
+    for (int i = 0; i < CPU_SETSIZE && len + 8 < n; i++)
+        if (CPU_ISSET(i, &set)) len += snprintf(buf + len, n - len, "%s%d", len ? "," : "", i);
+}
+
+int main(int argc, char **argv) {
+    if (argc < 3) { fprintf(stderr, "usage: %s LEFT.pgm RIGHT.pgm [-o out.pgm] [-g golden.pgm] [-t threads] [-w warm] [-n timed] [-j results.json] [--board name]\n", argv[0]); return 1; }
+    const char *lpath = argv[1], *rpath = argv[2], *opath = NULL, *gpath = NULL, *jpath = NULL, *board = "unknown";
+    int threads = 0, warm = 10, timed = 100;
+    for (int i = 3; i < argc; i++) {
+        if (!strcmp(argv[i], "-o") && i + 1 < argc) opath = argv[++i];
+        else if (!strcmp(argv[i], "-g") && i + 1 < argc) gpath = argv[++i];
+        else if (!strcmp(argv[i], "-t") && i + 1 < argc) threads = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-w") && i + 1 < argc) warm = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-n") && i + 1 < argc) timed = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "-j") && i + 1 < argc) jpath = argv[++i];
+        else if (!strcmp(argv[i], "--board") && i + 1 < argc) board = argv[++i];
+        else { fprintf(stderr, "unknown arg %s\n", argv[i]); return 1; }
+    }
+
+    int W, H, W2, H2;
+    uint8_t *L = pgm_read(lpath, &W, &H);
+    uint8_t *R = pgm_read(rpath, &W2, &H2);
+    if (!L || !R) return 1;
+    if (W != W2 || H != H2) { fprintf(stderr, "left/right size mismatch\n"); return 1; }
+    uint8_t *disp = calloc((size_t)W * H, 1);
+    if (!disp) return 1;
+
+    sgm_stage_times st = { -1, -1, -1, -1 };
+    for (int i = 0; i < warm; i++)
+        if (SGM_IMPL.run(L, R, W, H, disp, threads, &st)) { fprintf(stderr, "impl failed\n"); return 1; }
+
+    double *ms = malloc(sizeof(double) * (timed > 0 ? timed : 1));
+    for (int i = 0; i < timed; i++) {
+        double t0 = now_ms();
+        if (SGM_IMPL.run(L, R, W, H, disp, threads, &st)) { fprintf(stderr, "impl failed\n"); return 1; }
+        ms[i] = now_ms() - t0;
+    }
+    if (timed == 0) { double t0 = now_ms(); SGM_IMPL.run(L, R, W, H, disp, threads, &st); ms[0] = now_ms() - t0; timed = 1; }
+
+    qsort(ms, timed, sizeof(double), cmp_double);
+    double med = ms[timed / 2], p95 = ms[(int)(timed * 0.95) < timed ? (int)(timed * 0.95) : timed - 1], mn = ms[0];
+    double fps = 1000.0 / med, mpix = (double)W * H / 1e6 * fps;
+
+    uint64_t hash = fnv1a64(disp, (size_t)W * H);
+    int golden_match = -1;
+    if (gpath) {
+        int gw, gh; uint8_t *G = pgm_read(gpath, &gw, &gh);
+        if (!G) return 1;
+        if (gw != W || gh != H) golden_match = 0;
+        else {
+            golden_match = 1;
+            size_t diff = 0, first = (size_t)-1;
+            for (size_t i = 0; i < (size_t)W * H; i++) if (G[i] != disp[i]) { diff++; if (first == (size_t)-1) first = i; }
+            if (diff) { golden_match = 0; fprintf(stderr, "GOLDEN MISMATCH: %zu pixels differ, first at (%zu,%zu) got %d want %d\n",
+                                               diff, first % W, first / W, disp[first], G[first]); }
+        }
+        free(G);
+    }
+    if (opath && pgm_write(opath, disp, W, H)) return 1;
+
+    char mask[512]; cpu_mask_string(mask, sizeof mask);
+    printf("%-12s %dx%d D=%d paths=%d th=%d  median %8.2f ms  p95 %8.2f  min %8.2f  fps %7.2f  Mpix/s %7.2f  hash %016llx%s\n",
+           SGM_IMPL.name, W, H, SGM_D, SGM_PATHS, threads, med, p95, mn, fps, mpix,
+           (unsigned long long)hash, golden_match == 1 ? "  GOLDEN OK" : golden_match == 0 ? "  GOLDEN FAIL" : "");
+
+    if (jpath) {
+        FILE *f = fopen(jpath, "a");
+        if (!f) { fprintf(stderr, "cannot open %s\n", jpath); return 1; }
+        time_t now = time(NULL); char ts[64]; strftime(ts, sizeof ts, "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
+        fprintf(f, "{\"impl\":\"%s\",\"board\":\"%s\",\"W\":%d,\"H\":%d,\"D\":%d,\"paths\":%d,\"census\":\"%dx%d\",\"P1\":%d,\"P2\":%d,"
+                   "\"threads\":%d,\"cpu_mask\":\"%s\",\"warm\":%d,\"timed\":%d,"
+                   "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"fps\":%.3f,\"mpix_s\":%.3f,"
+                   "\"census_ms\":%.3f,\"cost_ms\":%.3f,\"aggregate_ms\":%.3f,\"argmin_ms\":%.3f,"
+                   "\"hash\":\"%016llx\",\"golden_match\":%d,\"cflags\":\"%s\",\"git\":\"%s\",\"ts\":\"%s\"}\n",
+                SGM_IMPL.name, board, W, H, SGM_D, SGM_PATHS, SGM_CENSUS_W, SGM_CENSUS_H, SGM_P1, SGM_P2,
+                threads, mask, warm, timed, med, p95, mn, fps, mpix,
+                st.census_ms, st.cost_ms, st.aggregate_ms, st.argmin_ms,
+                (unsigned long long)hash, golden_match, CFLAGS_STR, GIT_SHA, ts);
+        fclose(f);
+    }
+    free(L); free(R); free(disp); free(ms);
+    return golden_match == 0 ? 2 : 0;
+}

@@ -1,0 +1,15 @@
+cpu topology by MIDR:
+  cpu0 part 0xd05
+  cpu1 part 0xd05
+  cpu2 part 0xd05
+  cpu3 part 0xd05
+  cpu4 part 0xd05
+  cpu5 part 0xd05
+  a55: 0,1,2,3,4,5
+
+=== measured, not assumed ===
+NXP FRDM-IMX95-PRO
+cpu0 max=1800000 gov=performance
+cpu5 max=1800000 gov=performance
+kernel: 6.18.20-2.0.0-gb096ce610e95
+gcc: gcc (GCC) 15.2.0

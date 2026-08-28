@@ -1,0 +1,9 @@
+bin/
+data/synthetic/
+data/real/
+*.o
+
+# Hexagon build products (qualcomm session's HVX work — sources tracked, binaries not)
+hvx/b_*
+hvx/sgm_hvx_bench
+hvx/*.log
