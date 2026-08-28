@@ -38,13 +38,41 @@ static int cmp_double(const void *a, const void *b) {
     return (x > y) - (x < y);
 }
 
+/* Which CPUs did the work actually run on?
+ *
+ * sched_getaffinity() on the primary thread cannot answer that. libgomp binds
+ * the primary thread in its CONSTRUCTOR, before main() is entered, so under
+ * OMP_PROC_BIND -- which scripts/pin.sh sets, and which every published
+ * measurement therefore used -- the primary thread's mask is a single core no
+ * matter when it is read. Until 2026-08-28 this recorded cpu_mask "0" for every
+ * pinned six-core run: true of the thread that asked, false as a record of the
+ * run, and wrong in the direction that makes a fast number look like it came
+ * from fewer cores.
+ *
+ * Moving the call to the top of main does NOT fix it -- there is no "earlier"
+ * available to us. Measured on an A55: the mask is already count=1 on the first
+ * line of main. So take the UNION over the OpenMP team from inside a parallel
+ * region, which is the set the work was allowed on and the thing this field is
+ * supposed to name. */
 static void cpu_mask_string(char *buf, size_t n) {
-    cpu_set_t set; CPU_ZERO(&set);
+    cpu_set_t u; CPU_ZERO(&u);
+#ifdef _OPENMP
+#pragma omp parallel
+    {
+        cpu_set_t mine; CPU_ZERO(&mine);
+        if (sched_getaffinity(0, sizeof mine, &mine) == 0) {
+#pragma omp critical
+            CPU_OR(&u, &u, &mine);
+        }
+    }
+#else
+    if (sched_getaffinity(0, sizeof u, &u) != 0) { snprintf(buf, n, "?"); return; }
+#endif
     buf[0] = 0;
-    if (sched_getaffinity(0, sizeof set, &set) != 0) { snprintf(buf, n, "?"); return; }
     size_t len = 0;
     for (int i = 0; i < CPU_SETSIZE && len + 8 < n; i++)
-        if (CPU_ISSET(i, &set)) len += snprintf(buf + len, n - len, "%s%d", len ? "," : "", i);
+        if (CPU_ISSET(i, &u)) len += snprintf(buf + len, n - len, "%s%d", len ? "," : "", i);
+    if (!len) snprintf(buf, n, "?");
 }
 
 int main(int argc, char **argv) {
@@ -90,6 +118,9 @@ int main(int argc, char **argv) {
         fprintf(stderr, "WARNING: -t %d ignored, built without OpenMP\n", threads);
 #endif
 
+    /* after the team size is settled, so the union covers the real team */
+    char mask[512]; cpu_mask_string(mask, sizeof mask);
+
     int W, H, W2, H2;
     uint8_t *L = pgm_read(lpath, &W, &H);
     uint8_t *R = pgm_read(rpath, &W2, &H2);
@@ -131,7 +162,6 @@ int main(int argc, char **argv) {
     }
     if (opath && pgm_write(opath, disp, W, H)) return 1;
 
-    char mask[512]; cpu_mask_string(mask, sizeof mask);
     printf("%-12s %dx%d D=%d paths=%d th=%d  median %8.2f ms  p95 %8.2f  min %8.2f  fps %7.2f  Mpix/s %7.2f  hash %016llx%s\n",
            SGM_IMPL.name, W, H, SGM_D, SGM_PATHS, threads_actual, med, p95, mn, fps, mpix,
            (unsigned long long)hash, golden_match == 1 ? "  GOLDEN OK" : golden_match == 0 ? "  GOLDEN FAIL" : "");
