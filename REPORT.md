@@ -41,7 +41,7 @@ D but **not** census window or path count.
 | **6× Cortex-A55** @1.8 GHz (i.MX 95 FRDM) | D=64 | 6 | 341.3 | 2.9 | 6.08 | **389** | 82 |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
-| Hexagon v73 NSP (IQ-9075, FastRPC) § | D=64 | 6 | 1784.1 | 0.56 | 1.16 | 74 | — |
+| Hexagon v73 NSP (IQ-9075, FastRPC) § | D=64 | 6 | 1223.0 | 0.82 | 1.70 | 108 | — |
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
 | scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
@@ -72,7 +72,7 @@ a stronger statement about SGM than about either core.
 ### Two wide architectures, two vendors, same loss
 
 The Mali G720 (518 MDE/s) loses to **two** A720 cores. The Hexagon v73 NSP
-(74 MDE/s) loses to its own die's A78C cluster by **18.7×** — same board, same
+(108 MDE/s) loses to its own die's A78C cluster by **12.8×** — same board, same
 session, same golden. That ratio deliberately uses their *same-session* A78C
 re-run (95.51 ms) rather than the 94.7 ms in the table above: comparing two
 numbers taken minutes apart on one machine is worth more than comparing across
@@ -85,13 +85,29 @@ needs `L(d)` at the previous one, so the only parallelism is across disparities
 and across independent scanlines. A wide unit can fill lanes but cannot hide
 the dependency, and an OoO core's deep window absorbs exactly this shape.
 
-⚠️ **Honest bounds on that claim.** The 18.7× is MEASURED for the port as it
-exists; it is *not* the DSP's floor. In that port census is still scalar and is
-the largest phase (36–43%), argmin and cost are scalar, and D=64 fills only 64
-of 128 byte lanes. The qualcomm session's own ceiling for the remaining work is
-**~200–250 MDE/s — DERIVED, not measured** — still 5–7× short of the A78C. So
-"the DSP cannot win here" is a *judgement* resting on a measurement, and is
-labelled as such rather than promoted into the headline.
+⚠️ **Honest bounds, and the ratio has already moved once.** The first port
+measured 18.7×. Vectorising census — 128 pixels in lanes, accumulated into 8
+byte-planes, then interleaved by three rounds of `Q6_W_vshuff_VVR` at byte /
+halfword / word granularity — took census from **36.4% of runtime to 6.9%** and
+the whole pipeline from 1784.07 to 1222.99 ms, i.e. **1.46× end to end**, hash
+unchanged. That is why 18.7× was never quoted as the DSP's floor: it was a floor
+of *effort*, and one afternoon moved it to 12.8×.
+
+What remains undone there: aggregation is now 65.7% of runtime and still wastes
+**half the vector** (D=64 occupies 64 of 128 byte lanes), with argmin at 14.4%
+and cost at 13.0%. The qualcomm session's ceiling for that remaining work is
+**~200–250 MDE/s — DERIVED, not measured** — still 5.6–6.9× short of the A78C.
+
+🚨 **A larger caveat, disclosed by them unprompted: all of this is one cDSP of
+five co-processors.** The board exposes `/dev/fastrpc-{cdsp,cdsp1,gdsp0,gdsp1,
+adsp}`, and the two **gdsps are general-purpose Hexagons that nobody in this
+corpus has ever benchmarked**. So 12.8× is a floor of effort on **one of five
+engines**, not a statement about the SoC's DSP complex. Work on the other
+engines is in flight.
+
+So "the DSP cannot win here" is a *judgement* resting on a measurement, with a
+known-incomplete denominator. It is labelled that way rather than promoted into
+the headline, and it is the claim most likely to be revised.
 
 ⭐ Structural detail worth keeping: the NSP has **six hardware threads but only
 four HVX contexts**, read on the board. That is why DSP scaling saturates at
