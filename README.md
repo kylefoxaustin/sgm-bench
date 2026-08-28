@@ -52,7 +52,7 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | 8× Cortex-A78C (IQ-9075) | CPU | 6 | 94.7 | 1,402 | 402 |
 | 6× Cortex-A55 (i.MX 95) | CPU | 6 | 341.3 | 389 | 82 |
 | Mali-G720, 10 CU | GPU | — | 256 | 518 | — |
-| Hexagon v73 NSP | DSP | 6 | 1223.0 | 108 | — |
+| **Hexagon v73 NSP** | DSP | 4 | 138.6 | **957** | — |
 | Mali-G310, 1 CU | GPU | — | 1846 | 72 | — |
 | scalar reference, 1× A55 | floor | 1 | 9188 | 14.4 | — |
 
@@ -61,13 +61,21 @@ unit the literature uses because fps hides D — two implementations can both
 report "30 fps" while doing 100× different work. It normalises D but **not**
 census window size or path count, so compare those explicitly.
 
-The headline finding is not the top row. It is that **both wide-SIMD targets
-lose to the out-of-order CPUs** — the 10-CU Mali loses to *two* A720 cores, and
-the Hexagon NSP loses to its own die's CPU cluster by an order of magnitude.
-SGM's aggregation is a serial recurrence in x or y, so a wide unit can fill
-lanes but cannot hide the dependency, while an OoO window absorbs exactly that
-shape. (Caveats on both, including work still undone on the DSP, are in
-`REPORT.md` — the DSP number has already improved once and may again.)
+The most interesting row is the DSP, and not for the reason first published
+here. SGM's aggregation is a serial recurrence in x or y, so the obvious reading
+is that a wide unit can fill lanes but cannot hide the dependency. On that
+reading the Hexagon NSP first measured **18.7× slower** than the CPU cluster.
+
+It is now **1.45×**, and it beats a *single* A78C core by **2.40×** — a 13× move
+in one day, bit-exact throughout. **The latency is hideable**, by interleaving
+independent dependency chains at a cost in registers; the part that was
+latency-bound was never bandwidth-bound (28.17 GB/s available, 6.8 consumed).
+
+⚠️ Which means the Mali figure here is probably a floor too, by the same
+mechanism: `mali_cl/sgm.cl` carries **one** dependency chain per work-item with
+three barrier sites per step and never interleaves. 518 MDE/s is what this
+kernel does, not what the G720 can do. `REPORT.md` has the full trajectory,
+including a DERIVED ceiling that was wrong by 4×.
 
 ---
 
@@ -219,6 +227,12 @@ Things that cost real time here, recorded so they cost you less:
   **union over the OpenMP team**, gathered inside a parallel region. If you are
   logging "which CPUs did this run on" anywhere else, check it the same way: the
   obvious call answers a question about the asking thread, not about the work.
+- 🚨 **A bit-exact kernel can still be half-scalar, and the hash will never
+  tell you.** A census kernel here stepped 128 columns and stopped 124 short of
+  the row end, handing 6.7% of pixels to a scalar fallback that ate ~50% of the
+  phase. Output was *correct*, so correctness gating said nothing; one
+  overlapping tail block took it from 92.0M to 15.8M cycles. Golden files prove
+  what a kernel computes, never how. Profile the phases.
 - **gcc 12.2 cannot target `cortex-a720`.** All A720 results use
   `-mcpu=cortex-a710` (same Armv9 family, same 4×128-bit SIMD).
 - **Heterogeneous clusters lie about "N cores".** The Radxa O6 has four distinct

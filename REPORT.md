@@ -41,7 +41,7 @@ D but **not** census window or path count.
 | **6× Cortex-A55** @1.8 GHz (i.MX 95 FRDM) | D=64 | 6 | 341.3 | 2.9 | 6.08 | **389** | 82 |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
-| Hexagon v73 NSP (IQ-9075, FastRPC) § | D=64 | 6 | 1223.0 | 0.82 | 1.70 | 108 | — |
+| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 138.6 | 7.21 | 14.96 | **957** | — |
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
 | scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
@@ -69,56 +69,97 @@ A720 423 MDE/s — a 5% gap that needs no explanation.** Two wide out-of-order A
 cores from different vendors land in the same place on this algorithm, which is
 a stronger statement about SGM than about either core.
 
-### Two wide architectures, two vendors, same loss
+### 🔴 The wide-unit finding was wrong, and it took three revisions to find out
 
-The Mali G720 (518 MDE/s) loses to **two** A720 cores. The Hexagon v73 NSP
-(108 MDE/s) loses to its own die's A78C cluster by **12.8×** — same board, same
-session, same golden. That ratio deliberately uses their *same-session* A78C
-re-run (95.51 ms) rather than the 94.7 ms in the table above: comparing two
-numbers taken minutes apart on one machine is worth more than comparing across
-sessions, and the two agree to 0.6% anyway. Two independent wide-SIMD units, from two vendors,
-both beaten by the out-of-order CPU on this algorithm.
+**This section previously concluded that both wide-SIMD targets lose to the
+out-of-order CPUs. That conclusion is withdrawn for the DSP.**
 
-The mechanism is the same one that shaped every optimisation in this repo:
-**SGM's aggregation is a serial recurrence in x or y.** `L(d)` at one pixel
-needs `L(d)` at the previous one, so the only parallelism is across disparities
-and across independent scanlines. A wide unit can fill lanes but cannot hide
-the dependency, and an OoO core's deep window absorbs exactly this shape.
+The Hexagon NSP measured **18.7× slower than the A78C cluster, then 12.8×, then
+1.45× — a 13× move in one day**, all bit-exact against the same golden. At its
+current best it does **957 MDE/s at 4 threads**, and it **beats a single A78C
+core by 2.40×**. Nothing here was retracted along the way, because the ratio was
+labelled a floor of *effort* rather than the DSP's ceiling every time it was
+printed. That labelling is the only reason this reads as progress instead of as
+three corrections.
 
-⚠️ **Honest bounds, and the ratio has already moved once.** The first port
-measured 18.7×. Vectorising census — 128 pixels in lanes, accumulated into 8
-byte-planes, then interleaved by three rounds of `Q6_W_vshuff_VVR` at byte /
-halfword / word granularity — took census from **36.4% of runtime to 6.9%** and
-the whole pipeline from 1784.07 to 1222.99 ms, i.e. **1.46× end to end**, hash
-unchanged. That is why 18.7× was never quoted as the DSP's floor: it was a floor
-of *effort*, and one afternoon moved it to 12.8×.
+⚠️ **A DERIVED ceiling was wrong by ~4×, which is the cautionary part.** The
+qualcomm session estimated ~200–250 MDE/s as a generous bound on the remaining
+work, tagged DERIVED, and the judgement "the DSP cannot win here" rested on it.
+The answer was 957. The estimate failed by scaling the phases that were visible
+and assuming the rest was incremental: the largest single win turned out to be a
+**265 MB memset that had never been profiled**, and the second was using **4
+threads instead of 6** — a correction to `num_hvx128_contexts`, a parameter that
+had *already been measured and then not acted on*. **A ceiling derived from the
+costs you can already see is not a ceiling; it is a restatement of your current
+profile.**
 
-What remains undone there: aggregation is now 65.7% of runtime and still wastes
-**half the vector** (D=64 occupies 64 of 128 byte lanes), with argmin at 14.4%
-and cost at 13.0%. The qualcomm session's ceiling for that remaining work is
-**~200–250 MDE/s — DERIVED, not measured** — still 5.6–6.9× short of the A78C.
+### What the mechanism actually is
 
-🚨 **A larger caveat, disclosed by them unprompted: all of this is one cDSP of
-five co-processors.** The board exposes `/dev/fastrpc-{cdsp,cdsp1,gdsp0,gdsp1,
-adsp}`, and the two **gdsps are general-purpose Hexagons that nobody in this
-corpus has ever benchmarked**. So 12.8× is a floor of effort on **one of five
-engines**, not a statement about the SoC's DSP complex. Work on the other
-engines is in flight.
+The original claim — SGM's aggregation is a serial recurrence, so wide units can
+fill lanes but cannot hide the dependency — was right about the *shape* and wrong
+about the *conclusion*. The correction:
 
-So "the DSP cannot win here" is a *judgement* resting on a measurement, with a
-known-incomplete denominator. It is labelled that way rather than promoted into
-the headline, and it is the claim most likely to be revised.
+**The latency is hideable, by interleaving independent dependency chains, at a
+cost in registers.** A DSP-side bandwidth probe found 28.17 GB/s available at 4
+threads while aggregation consumed 6.8 — it was **latency-bound, not
+bandwidth-bound**. Redirecting to op-count, prefetch and independent chains was
+worth **6.3× on argmin** and **2.5× on the vertical paths**.
 
-⭐ Structural detail worth keeping: the NSP has **six hardware threads but only
-four HVX contexts**, read on the board. That is why DSP scaling saturates at
-four (3.59× at 4 threads, 3.76× at 6) — a hardware limit, not a code one.
+⚠️ **Which means our own Mali number is probably also a floor, and by the same
+mechanism.** `mali_cl/sgm.cl` carries **one** `uchar4` dependency chain per
+work-item across the entire sweep, with three barrier sites per recurrence step.
+It never interleaves chains. The 518 MDE/s figure stands as MEASURED, but it
+should not be read as what the G720 can do — only as what this kernel does. That
+is a limitation of our code, stated here rather than left for someone to find.
 
-⚠️ **Their trap is our failure shape.** HVX widening is *deinterleaved* — the
-low vector holds even-indexed bytes, not bytes 0..63 — so their first kernel was
-**3× faster with a wrong hash**: a plausible disparity map, no crash, no zeros,
-no warning. It was caught only because this harness gates the hash in the same
-run that produces the timing. That design choice has now paid for itself on
-hardware I have never touched.
+Interleaving is not free and does not always win: on the *horizontal* paths 4
+chains were **worse** (22.1M → 40.2M cycles), because horizontal chains must
+pair rows, so 4 chains means 16 open streams. Vertical chains walk one contiguous
+region and win. Prefetch distance 64 was optimal; 128/256/512 gave 206/223/255 ms.
+
+### 🚨 A bit-exact kernel can still be half-scalar
+
+The single most useful thing to come out of the DSP work, and it is a limit on
+this repo's whole acceptance model:
+
+Their census kernel stepped 128 columns from x=4 and **stopped at 1796**, handing
+the last 124 columns of every row to a scalar 62-neighbour fallback — **6.7% of
+pixels consuming ~50% of the phase**. One overlapping tail block took it from
+92.0M to 15.8M cycles.
+
+**The hash check caught nothing, because the output was correct.** Correctness
+gating proves a kernel computes the right answer. It says nothing about whether
+it computes it the fast way. A vectorised kernel with a scalar tail is bit-exact
+and slow, and no golden file will ever tell you. Profile the phases; do not infer
+from the fact that it passes.
+
+### The GDSPs: a negative result on an engine nobody had measured
+
+The board exposes five co-processors (`cdsp`, `cdsp1`, `gdsp0`, `gdsp1`, `adsp`).
+The two GDSPs are general-purpose Hexagons and **they have no HVX at all** —
+`HVX_SUPPORT_128B=0`, `VTCM=0`, `ARCH_VER 0x8273`, and any HVX path returns
+`0x8000040d`, against the cDSP's 4 HVX contexts and 8 MB VTCM. Scalar SGM runs
+on gdsp0 bit-exact (320×240, hash `3e2d0be6b4a6b6dd`, 840.70 ms), and on
+identical scalar code a GDSP is **1.24× slower** than a cDSP — 1.086× from clock
+(1340 vs 1455 MHz) and 1.143× from cycles. Six-thread scalar v73 cores: useless
+for SGM, real cores for scalar offload.
+
+Dual-NSP gives **1.79× throughput** (6.17 → 11.04 fps) but single-frame latency
+**11–15% worse** (137 → 153 ms) from DDR contention. A bit-exact single-frame
+split is blocked not by the algorithm but by FastRPC cache maintenance on a
+411 MB in/out buffer at each barrier. Recorded as UNBUILT rather than estimated.
+
+⭐ Structural detail that turned out to matter: the NSP has **six hardware
+threads but only four HVX contexts**. The best configuration is **4 threads, not
+6** — and that parameter had been measured before it was acted on.
+
+⚠️ **The failure shape this project keeps meeting.** HVX widening is
+*deinterleaved* — the low vector holds even-indexed bytes, not bytes 0..63 — so
+an early kernel was **3× faster with a wrong hash**: a plausible disparity map,
+no crash, no zeros. Later, a second build in a shared tree produced 246 ms
+against a known-good 1223 ms, again with a wrong hash, and again was caught only
+because the harness gates the hash in the same run as the timing. Two saves on
+hardware this repo's author has never touched.
 
 Power: **blank, deliberately.** No board here exposes a usable rail for the
 CPU block alone, and rule 6 says leave the cell empty rather than estimate.
