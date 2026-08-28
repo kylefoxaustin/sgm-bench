@@ -74,8 +74,14 @@ latency-bound was never bandwidth-bound (28.17 GB/s available, 6.8 consumed).
 ⚠️ Which means the Mali figure here is probably a floor too, by the same
 mechanism: `mali_cl/sgm.cl` carries **one** dependency chain per work-item with
 three barrier sites per step and never interleaves. 518 MDE/s is what this
-kernel does, not what the G720 can do. `REPORT.md` has the full trajectory,
-including a DERIVED ceiling that was wrong by 4×.
+kernel does, not what the G720 can do.
+
+Read that as *weaker* than it sounds, not stronger. The mechanism predicts the
+number is low; it does not predict **by how much**. 518 is now an **unbounded
+floor** rather than a measurement of the hardware, and "the GPU could be much
+faster" is not the same claim as "the GPU is competitive". Nobody has done for
+the Mali what was done for the DSP, so nobody knows. `REPORT.md` has the full
+trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ---
 
@@ -231,8 +237,25 @@ Things that cost real time here, recorded so they cost you less:
   tell you.** A census kernel here stepped 128 columns and stopped 124 short of
   the row end, handing 6.7% of pixels to a scalar fallback that ate ~50% of the
   phase. Output was *correct*, so correctness gating said nothing; one
-  overlapping tail block took it from 92.0M to 15.8M cycles. Golden files prove
-  what a kernel computes, never how. Profile the phases.
+  overlapping tail block took it from 92.0M to 15.8M cycles.
+
+  **This repo ships only one of the two gates a kernel needs.** A golden file is
+  a statement about outputs; it can never constrain how they were produced.
+  Three things do, in increasing cost:
+
+  1. **Absolute per-phase cost, never shares.** A share moves when any *other*
+     phase moves. That census read "6.9% of runtime" and looked finished while
+     hiding a 5.8×. The harness already writes absolute `census_ms`,
+     `cost_ms`, `aggregate_ms`, `argmin_ms` to the JSON — the data was there
+     and nobody gated on it.
+  2. **An op-count roofline per phase.** Census is 62 compares over 128 lanes;
+     you can compute what it *should* cost within ~2× and compare against that
+     rather than against "faster than last time". Anything far off its own
+     arithmetic is hiding a scalar path, a spill, or a tail.
+  3. **Vector-instruction fraction.** Disassemble the hot function and count
+     vector ops. A kernel that is 6.7% scalar *by pixel* is nowhere near 6.7%
+     scalar by instruction, because the scalar path is a 62-iteration inner
+     loop. The disassembly shows it; the timing does not.
 - **gcc 12.2 cannot target `cortex-a720`.** All A720 results use
   `-mcpu=cortex-a710` (same Armv9 family, same 4×128-bit SIMD).
 - **Heterogeneous clusters lie about "N cores".** The Radxa O6 has four distinct

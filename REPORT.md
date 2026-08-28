@@ -112,12 +112,52 @@ It never interleaves chains. The 518 MDE/s figure stands as MEASURED, but it
 should not be read as what the G720 can do — only as what this kernel does. That
 is a limitation of our code, stated here rather than left for someone to find.
 
+🚨 **And that floor is UNBOUNDED, which makes it a weaker statement than it
+looks.** The mechanism predicts our Mali number is low; it does not predict by
+how much. Nobody has done for the G720 what was done for the DSP, so the honest
+position is that the G720's capability on this workload is *unmeasured* — not
+that it is competitive. "This kernel leaves performance on the table" and "the
+GPU would win if written properly" are different claims and only the first is
+supported.
+
 Interleaving is not free and does not always win: on the *horizontal* paths 4
 chains were **worse** (22.1M → 40.2M cycles), because horizontal chains must
 pair rows, so 4 chains means 16 open streams. Vertical chains walk one contiguous
 region and win. Prefetch distance 64 was optimal; 128/256/512 gave 206/223/255 ms.
 
-### 🚨 A bit-exact kernel can still be half-scalar
+### 🚨 Only a predicted cost catches slow-but-right
+
+**This benchmark shipped one of the two gates every kernel needs, for a full
+day, while believing it had shipped the important one.**
+
+A golden hash is a statement about *outputs*. It cannot constrain how they were
+produced, so it is structurally blind to a kernel that is correct and slow. The
+second gate is a *predicted cost*, and the campaign had none.
+
+⚠️ **And my own reasoning here was half wrong, in a way worth recording.** When
+the census speedup was disputed I chose to publish the **shares** (36.4% → 6.9%)
+over an inferred speedup, arguing shares "need no denominator and cannot rot".
+The first half was right — the inference was the weaker method. The second half
+was wrong: **a share is a ratio against a total that also moves**, so a phase can
+read 6.9% and look finished while hiding a 5.8×. Shares were the right way to
+report the *change* and a bad instrument for judging whether a phase is *done*.
+Exactly the failure mode of the redundant `Mpix/s` column — a derived number
+nothing re-derives.
+
+Three detectors, in increasing cost (due to the qualcomm session):
+
+1. **Absolute per-phase cost, never shares.** The harness has written absolute
+   `census_ms` / `cost_ms` / `aggregate_ms` / `argmin_ms` into the JSON from the
+   start. The data existed for the whole campaign; nothing gated on it.
+2. **An op-count roofline per phase.** Census is 62 compares over 128 lanes —
+   its cost is computable within ~2× from first principles. Gate on *that*
+   rather than on "faster than last time"; anything far off its own arithmetic
+   is hiding a scalar path, a spill, or a tail.
+3. **Vector-instruction fraction.** Disassemble the hot function and count
+   vector ops. A kernel 6.7% scalar *by pixel* is nowhere near 6.7% scalar by
+   instruction, because the scalar path is a 62-iteration inner loop.
+
+### The case that motivated it: a bit-exact half-scalar kernel
 
 The single most useful thing to come out of the DSP work, and it is a limit on
 this repo's whole acceptance model:
