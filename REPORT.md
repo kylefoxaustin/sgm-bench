@@ -33,6 +33,33 @@ It is the unit the literature uses, because fps hides D: two implementations
 can both report "30 fps" while doing 100× different work. Note it normalises
 D but **not** census window or path count.
 
+⚠️ **And it treats D as free-floating when the optics fix it.** Disparity is
+`d = f·B/Z` with `f = (W/2)/tan(HFOV/2)`, so the D you *need* scales with image
+width and inversely with field of view. Since work is `W·H·D` and `D ∝ W`, **SGM
+work goes as W²·H — cubic in linear resolution, not quadratic.** Dropping 1080p
+to 720p is 2.25× fewer pixels but ~3.4× less work. Verified independently here;
+the geometry is due to the qualcomm session.
+
+Three consequences a throughput number hides:
+
+- **A wider field of view is cheaper.** 90° → 120° cuts focal length 1.73×, cuts
+  required D by 1.73×, and *sees more of the scene*. FOV is a performance knob
+  and nobody treats it as one.
+- **This benchmark's configuration is easier than a robot's.** At a 12 cm
+  baseline and 90°, D=64 implies a **1.80 m minimum range** — useless for
+  manipulation. A deployable 720p/120°/D=128 configuration reaches 0.35 m.
+- **Bigger D is cheaper per disparity and more expensive per frame.** Our own
+  A720 data says so: doubling D=64→128 costs 2.05× wall clock for 2.00× the
+  disparities, a −2.4% change in MDE/s. On the NSP, where D=64 leaves a 128-lane
+  vector half empty, larger D is outright *faster* per disparity (773 / 987 /
+  1121 / 1198 MDE/s at D = 32 / 64 / 128 / 256 — MEASURED by the qualcomm
+  session on their hardware).
+
+So MDE/s is the right unit for comparing implementations at a fixed
+configuration, and the wrong unit for choosing a configuration. The binding
+constraint on a real system turns out to be the **camera baseline**, not the
+kernel.
+
 | platform | config | threads | ms | fps | Mpix/s | **MDE/s** | best per-core |
 |---|---|---|---|---|---|---|---|
 | **8× Cortex-A720** @2.2–2.5 GHz (Radxa O6) | D=64 | 8 | 51.7 | 19.4 | 40.14 | **2,569** | 423 |
@@ -144,7 +171,23 @@ report the *change* and a bad instrument for judging whether a phase is *done*.
 Exactly the failure mode of the redundant `Mpix/s` column — a derived number
 nothing re-derives.
 
-Three detectors, in increasing cost (due to the qualcomm session):
+⚠️ **A third way a check can be green and worthless, which we had not named:
+it can be unable to discriminate.** The qualcomm session gated a new D=128 path
+on "must match D=64's hash" — a condition **also satisfied by a kernel that only
+ever searched d < 64**. The check ran, and passed, and could not have failed for
+the bug it existed to catch. That completes the set:
+
+| failure mode | example from this campaign |
+|---|---|
+| a check that **cannot fail** | the inert `-t` flag — 4.63× understatement on A55 |
+| a check **nobody runs** | absolute per-phase ms, in the JSON since commit 1 |
+| a check that **cannot discriminate** | "D=128 must match D=64's hash" |
+| **slow-but-right** — beyond correctness gating entirely | two half-scalar phases |
+
+All four read as green from outside. The last one is the only class a golden
+file can never address even in principle.
+
+Three detectors for it, in increasing cost (due to the qualcomm session):
 
 1. **Absolute per-phase cost, never shares.** The harness has written absolute
    `census_ms` / `cost_ms` / `aggregate_ms` / `argmin_ms` into the JSON from the
@@ -156,6 +199,15 @@ Three detectors, in increasing cost (due to the qualcomm session):
 3. **Vector-instruction fraction.** Disassemble the hot function and count
    vector ops. A kernel 6.7% scalar *by pixel* is nowhere near 6.7% scalar by
    instruction, because the scalar path is a 62-iteration inner loop.
+
+🚨 **Pick the threshold by planting a defect, not by taste.** A roofline tuned
+2× too generous, or keyed to a phase that no longer exists after a fusion, passes
+everything forever and looks exactly like a clean codebase. Note that this
+harness already reports `cost_ms = -1` when cost is fused into aggregation and
+`argmin_ms = -1` when argmin is fused — so a phase-keyed gate would silently skip
+precisely the phases most likely to be hiding something. **It must fail closed on
+a missing phase, not skip it.** A green check nobody has ever seen go red is not
+evidence.
 
 ### The case that motivated it: a bit-exact half-scalar kernel
 
