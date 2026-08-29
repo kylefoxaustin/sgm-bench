@@ -31,12 +31,12 @@ UNITS = [
    "The code is ready; it is one build and one run when the lease clears.",
    "Shown here rather than omitted, because a missing row reads as",
    "'not applicable' and this is 'not done yet'."]),
- ("Cortex-A720 x8",    "CPU",  51.70, "Radxa Orion O6, 2.2-2.5 GHz, NEON", [
+ ("Cortex-A720 x8",    "CPU",  51.70, "Radxa Orion O6, 2.2-2.5 GHz, NEON  |  single core: 313.60 ms = 423 MDE/s @2.5 GHz", [
    "The CPU headline: 10.4x the fastest published Arm-CPU SGM at matched D",
    "and matched path count (ReS2tAC, Sensors 21(11):3938, 2021 — 242 MDE/s).",
    "Best single core measured at 423 MDE/s; scales monotonically 1->8 threads.",
    "D=64 -> D=128 is FLAT (-2.4%): 16 NEON lanes are already full at D=64."]),
- ("Cortex-A78C x8",    "CPU",  94.70, "Qualcomm IQ-9075, NEON", [
+ ("Cortex-A78C x8",    "CPU",  94.70, "Qualcomm IQ-9075, NEON  |  single core: 332.22 ms = 400 MDE/s", [
    "Ran THIS repository's a55 NEON implementation unmodified, on another",
    "vendor's silicon, and reproduced the golden at every thread count.",
    "Per-core 402 MDE/s vs the A720's 423 — a 5% gap between two wide",
@@ -54,6 +54,14 @@ UNITS = [
    "on the hardware: the kernel carries ONE dependency chain per work-item",
    "with three barrier sites per step and never interleaves chains.",
    "Nobody has done for this part what was done for the DSP."]),
+ ("Cortex-A55 x6",     "CPU", 341.30, "i.MX 95 FRDM, 1.8 GHz, NEON  |  single core: 1,588.74 ms = 84 MDE/s", [
+   "The reference platform this project is anchored to, and the slowest CPU here.",
+   "Scales 4.65x from 1 to 6 cores (1,588.74 -> 341.30 ms) -- that spread is also",
+   "the proof that the -t thread flag was working on these runs, since the inert",
+   "flag it was found to have would have collapsed every count to one timing.",
+   "Per core 84 MDE/s against the A720's 423: a 5.0x gap between an in-order",
+   "little core at 1.8 GHz and a wide out-of-order core at 2.5 GHz.",
+   "Block-width optimum is 192 here and 256 on the A720 -- not the same number."]),
  ("Mali-G310",         "GPU",1846.00, "1 CU, OpenCL 3.0", [
    "The entry-tier part, same kernel, same hash. Its 'no compute driver'",
    "reputation is wrong — it ships working OpenCL 3.0 and merely lacks clinfo."]),
@@ -85,13 +93,17 @@ textbox(s1, .6, 1.12, 12.2, .5,
         "1920x1080  ·  D=64  ·  4 paths  ·  9x7 census  ·  every row bit-exact to golden b1b407b5949f0cc1",
         14, False, MUTED)
 
-rows = [u for u in UNITS]
+SINGLE = [("Cortex-A720 x1 @2.5GHz","CPU",313.60),("Cortex-A78C x1","CPU",332.22),
+          ("Cortex-A55 x1 @1.8GHz","CPU",1588.74)]
+rows = [u for u in UNITS] + [(l,c,ms,"",[]) for l,c,ms in SINGLE]
+rows = sorted(rows, key=lambda r: (r[2] is None, r[2] or 0))
 tbl = s1.shapes.add_table(len(rows)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.5, 1.1, 1.7, 1.5, 1.9, 2.4)): tbl.columns[i].width = Inches(w)
+for r in range(len(rows)+1): tbl.rows[r].height = Inches(0.27)
 hdr = ("processing unit", "class", "runtime", "fps", "MDE/s", "vs scalar reference")
 for c, t in enumerate(hdr):
     cell = tbl.cell(0, c); cell.text = t
-    pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(13)
+    pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 base = 9188.0
@@ -103,7 +115,7 @@ for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
     for c, t in enumerate(vals):
         cell = tbl.cell(r, c); cell.text = str(t)
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
-        run.font.size = Pt(12); run.font.color.rgb = MUTED if ms is None else INK
+        run.font.size = Pt(11); run.font.color.rgb = MUTED if ms is None else INK
         run.font.bold = (c in (0, 4)) and ms is not None
         if c == 1:
             run.font.color.rgb = ACC[cls]; run.font.bold = True
@@ -113,12 +125,12 @@ CALLOUTS = [("699x", "faster than the scalar reference,\nwith byte-identical out
             ("9 / 4 / 3 / 1", "targets / vendors / programming models\n/ one golden hash")]
 for i, (big, small) in enumerate(CALLOUTS):
     x = .6 + i * 4.1
-    textbox(s1, x, 5.55, 3.9, .6, big, 30, True, ACC["GPU"] if i == 0 else INK)
-    tf = textbox(s1, x, 6.15, 3.9, .8, small.split("\n")[0], 12, False, MUTED)
+    textbox(s1, x, 6.05, 3.9, .6, big, 30, True, ACC["GPU"] if i == 0 else INK)
+    tf = textbox(s1, x, 6.6, 3.9, .8, small.split("\n")[0], 12, False, MUTED)
     pp = tf.add_paragraph(); rr = pp.add_run(); rr.text = small.split("\n")[1]
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
-textbox(s1, .6, 7.02, 12.2, .4,
+textbox(s1, .6, 7.15, 12.2, .35,
         "MDE/s = W x H x D / runtime.  Valid for comparing implementations at a FIXED configuration; "
         "it is the wrong unit for CHOOSING one, because the optics fix D.", 10, False, MUTED)
 

@@ -12,17 +12,24 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 
 # (label, class, ms, MDE/s) — MEASURED, 1080p D=64. None = not yet measured.
+# Clock is shown only where it was actually read off the machine. The Jetson GPUs
+# report [N/A] to nvidia-smi and have no readable devfreq node, and the A78C
+# board was under another session's lease, so those are left blank rather than
+# guessed -- an empty field beats a plausible number.
 DATA = [
-    ("NVIDIA Thor",            "GPU",  13.19, 10062),
-    ("Cortex-A720 x8",         "CPU",  51.70,  2569),
-    ("NVIDIA Orin AGX",        "GPU",  23.28,  5700),
-    ("Cortex-A78C x8",         "CPU",  94.70,  1402),
-    ("Hexagon v73 NSP",        "DSP", 138.64,   957),
-    ("Mali-G720 (10 CU)",      "GPU", 256.00,   518),
-    ("Cortex-A55 x6",          "CPU", 341.30,   389),
-    ("Mali-G310 (1 CU)",       "GPU",1846.00,    72),
-    ("scalar reference",       "REF",9188.00,  14.4),
-    ("NVIDIA RTX 5090",        "GPU",  None,   None),
+    ("NVIDIA Thor",             "GPU",  13.19, 10062),
+    ("NVIDIA Orin AGX",         "GPU",  23.28,  5700),
+    ("Cortex-A720 x8 @2.2-2.5GHz","CPU", 51.70,  2569),
+    ("Cortex-A78C x8",          "CPU",  94.70,  1402),
+    ("Hexagon v73 NSP @1.46GHz","DSP", 138.64,   957),
+    ("Mali-G720 (10 CU)",       "GPU", 256.00,   518),
+    ("Cortex-A720 x1 @2.5GHz",  "CPU", 313.60,   423),
+    ("Cortex-A78C x1",          "CPU", 332.22,   400),
+    ("Cortex-A55 x6 @1.8GHz",   "CPU", 341.30,   389),
+    ("Cortex-A55 x1 @1.8GHz",   "CPU",1588.74,    84),
+    ("Mali-G310 (1 CU)",        "GPU",1846.00,    72),
+    ("scalar reference (1 core)","REF",9188.00,  14.4),
+    ("NVIDIA RTX 5090",         "GPU",  None,   None),
 ]
 COL = {"GPU": "#4C8BF5", "CPU": "#E8710A", "DSP": "#12B5A5", "REF": "#9AA0A6"}
 
@@ -31,7 +38,7 @@ labels = [r[0] for r in rows]
 vals   = [r[3] if r[3] else 1 for r in rows]
 y = range(len(rows))
 
-fig, ax = plt.subplots(figsize=(11, 6.2))
+fig, ax = plt.subplots(figsize=(11.5, 7.4))
 for i, (lab, cls, ms, mde) in enumerate(rows):
     if mde is None:
         ax.barh(i, 12000, color="none", edgecolor=COL[cls], hatch="///", linewidth=1.4, alpha=.75)
