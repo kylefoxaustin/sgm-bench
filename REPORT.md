@@ -378,6 +378,46 @@ documented limitation: it catches regression from the calibration point, not an
 implementation that was already slow when calibrated. The *numbers* still name
 the phase to fix.
 
+### The discrete 5090's stereo engine: already removed, and the fallback costs
+
+Both Jetsons expose a fixed-function stereo engine. The discrete RTX 5090 has
+the same accelerator family (NVOFA) — its driver library exports
+`NvOFAPICreateInstanceCuda` and references `NV_OF_INIT_PARAMS::disparityRange` —
+so it was measured directly through the public Optical Flow SDK headers.
+
+⭐ **`NV_OF_MODE_STEREODISPARITY` fails on the 5090 with
+`NV_OF_ERR_UNSUPPORTED_FEATURE`** at every output grid size (1, 2 and 4).
+General optical-flow mode works on the same device, so this is mode removal
+rather than a broken engine. **NVIDIA documents the deprecation in future tense;
+on Blackwell consumer silicon it has already happened.**
+
+The documented fallback is to read the X component of general optical flow —
+disparity *is* the X component, since a rectified pair's matches are horizontal
+by construction. Measured, 1920×1080, 30 timed iterations, same scene and mask:
+
+| | time | bad > 1px | MAE |
+|---|---|---|---|
+| NVOFA general optical flow (2D search) | 8.50 ms | 5.3% | 5.59 |
+| **our CUDA SGM, D=128 (1D search)** | **4.13 ms** | **2.8%** | **0.48** |
+
+On this part **the software is 2.06× faster and substantially more accurate than
+the hardware engine's fallback path** — while doing *less* work, a 1D epipolar
+search against a 2D one. That asymmetry is the result, not a caveat.
+
+🚨 **And the fallback's cost is measurable rather than theoretical.** Stereo mode
+constrains the search to the epipolar line and therefore *cannot* return a
+vertical match. General optical flow can, and on a rectified pair any non-zero
+Δy is by definition an error: **13.4% of pixels have non-zero Δy, the largest
+75 pixels.** Those are errors the removed mode was structurally incapable of
+producing — the deprecation trades a guarantee for generality.
+
+⚠️ **Not bit-exact and not gated.** NVOFA is NVIDIA's implementation with its own
+cost function; this is a throughput and accuracy comparison, not the same test.
+⚠️ An earlier draft said these headers were "behind an NVIDIA developer login".
+**That was wrong** — they are public at `github.com/NVIDIA/NVIDIAOpticalFlowSDK`,
+and the claim came from guessing two repo names and reading the 404s as a
+finding.
+
 ### 🔴 The wide-unit finding was wrong, and it took three revisions to find out
 
 **This section previously concluded that both wide-SIMD targets lose to the

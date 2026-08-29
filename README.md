@@ -43,6 +43,14 @@ Thor's peak across the D sweep is **12,138 MDE/s at D=128**; it falls back to
 5090 shows no such reversal** — 37,383 / 64,880 / 74,957 MDE/s at D=64/128/256 —
 which is what the mechanism predicts on a part with 5.6× the bandwidth.
 
+### Resolution and disparity, corrected
+
+The (resolution × D) grid was re-run at 60 timed frames after a review found the
+12-frame version contained a physically impossible cell. At D=64 efficiency falls
+**10,077 → 9,467 → 9,267 → 9,187 MDE/s** from 1080p to VGA — a **1.10×** fall,
+not the 1.97× the under-sampled grid showed. Larger D remains clearly cheaper per
+disparity: **6,266 → 10,077 → 12,260** at 1080p as D goes 32 → 64 → 128.
+
 ### Is it just bandwidth?
 
 Since the kernel is memory-bound, the honest cross-GPU question is whether
@@ -187,6 +195,16 @@ SGM is a different implementation — its own census, penalties, and confidence
 output — so this is a throughput comparison at matched resolution and disparity
 range, not the same test the rest of this repo runs. It is kept in a separate
 figure for that reason.
+
+⭐ **On the discrete 5090 the stereo mode is already gone.**
+`NV_OF_MODE_STEREODISPARITY` returns `UNSUPPORTED_FEATURE` at every grid size;
+NVIDIA's documented deprecation has already landed on Blackwell. Its fallback —
+read the X component of general optical flow — measures **8.50 ms with 5.3% bad
+pixels**, against our CUDA SGM's **4.13 ms and 2.8%** on the same scene. The
+software is faster *and* more accurate there, while doing less work (1D vs 2D
+search). And the fallback's cost is concrete: **13.4% of pixels come back with a
+non-zero vertical component, the largest 75 pixels** — errors the removed stereo
+mode was structurally incapable of producing.
 
 ⚠️ **Watch the downscale factor.** OFA defaults to `downscaleFactor=2`, which
 emits a **960×540** disparity map from a 1920×1080 input and runs in 4.14 ms on
