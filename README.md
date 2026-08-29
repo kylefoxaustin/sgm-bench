@@ -1,45 +1,20 @@
 # sgm-bench
 
-**How fast can a CPU do Semi-Global Matching, if you refuse to let it be wrong?**
+**Semi-Global Matching stereo, measured across ten processors from four
+vendors — CPUs, GPUs, a DSP, and a fixed-function stereo engine — plus the
+optimisation work to make each one fast.**
 
-A from-scratch SGM stereo implementation benchmarked across nine execution
-targets — x86-64, Cortex-A55, Cortex-A720, Cortex-A78C, two Mali GPUs via
-OpenCL, a Hexagon NSP via FastRPC, and Jetson Orin and Thor via CUDA — where
-**every target must produce the same output, byte for byte**, or its timing is
-thrown away.
+| | |
+|---|---|
+| fastest measured | **74,957 MDE/s** — RTX 5090, 1080p, D=256 |
+| fastest at D=64 | **37,383 MDE/s** — RTX 5090, 282 fps at 1080p |
+| fastest CPU | **2,569 MDE/s** — 8× Cortex-A720, **10.4× the fastest published Arm-CPU SGM** at matched D and path count |
+| fastest fixed-function | **28,402 MDE/s** — NVIDIA OFA on Jetson Thor, which beats our tuned CUDA on the same chip by 2.34× and *loses* to it on the previous generation |
 
-Current best: **2,569 MDE/s at 1920×1080 on eight Cortex-A720 cores**, which is
-10.4× the fastest published Arm-CPU SGM at matched disparity range and matched
-path count. See [`REPORT.md`](REPORT.md) for the full measurement record,
-including the five optimisations that were tried and rejected.
-
----
-
-## The one design decision that matters
-
-**Timing and correctness are checked in the same run, and correctness gates.**
-
-    $ ./bin/sgm_a55 left.pgm right.pgm -g golden.pgm
-    a55  1920x1080 D=64 paths=4 th=6  median 342.75 ms  ...  hash b1b407b5949f0cc1  GOLDEN OK
-
-The harness computes an FNV-1a hash of the disparity map, compares against a
-golden map produced by a deliberately boring scalar reference, and **exits 2 on
-mismatch**. There is no mode in which you get a number without the check.
-
-This is not ceremony. SGM optimisation fails in a specific, nasty way: the fast
-broken version looks fine. A wrong disparity map is still a plausible-looking
-grey gradient — no crash, no NaNs, no zeroes, nothing a smoke test catches. Two
-separate incidents in this project were caught *only* by the hash:
-
-- a Hexagon kernel that was **3× faster with the wrong answer**, because HVX
-  widening is deinterleaved (the low vector holds even-indexed bytes, not bytes
-  0..63), so costs were accumulated onto the wrong disparities;
-- a stale golden file on one machine that would have silently failed every
-  correct implementation pushed to it.
-
-If you take one thing from this repo, take this: **an optimisation harness that
-reports time without simultaneously proving output is a harness that will
-eventually publish a lie.**
+Ten targets produce byte-identical output; a run that doesn't is discarded
+rather than reported. [`REPORT.md`](REPORT.md) has the full record — every
+number's provenance, the five optimisations that were tried and rejected, and
+an adversarial review of the results including two errors it found in them.
 
 ---
 
@@ -115,6 +90,38 @@ trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ---
 
+## Why SGM is hard
+
+Stereo matching is easy to state and awkward to make fast. For every pixel you
+score **D** candidate disparities, then smooth those scores so the depth map is
+coherent rather than speckled. The smoothing is what makes it good, and it is
+also what makes it hard:
+
+    L(p, d) = C(p, d) + min( L(p−1, d),  L(p−1, d±1) + P1,  min_k L(p−1, k) + P2 ) − min_k L(p−1, k)
+
+**Every pixel depends on the pixel before it.** That is a serial recurrence along
+each of four sweep directions, so the obvious parallelism — one thread per pixel —
+is unavailable. What is left is parallelism across disparities and across
+independent scanlines, and a cross-lane `min` over all D at *every step*.
+
+Three properties fall out, and they shape every implementation here:
+
+- **The work is large and fixed.** 1920×1080 × 64 disparities × 4 paths ≈ 530M
+  updates per frame. There is no early exit and no data-dependent shortcut.
+- **The intermediate is bigger than the image.** The aggregated cost volume is
+  265 MB per frame at 1080p — 128× the input — so a tuned implementation ends up
+  **memory-bound**, not compute-bound. Ours reaches 145 GB/s of a measured
+  247 GB/s ceiling on Thor.
+- **Wide hardware does not automatically win.** A vector unit can fill lanes but
+  cannot remove the dependency; hiding it takes independent chains and costs
+  registers. That is why the ordering below is not the ordering of raw FLOPS.
+
+![SGM throughput by processing unit](docs/results.png)
+
+Every bar is bit-exact to the same golden hash. The scalar reference at the
+bottom is the floor the whole exercise is measured against — the fastest bar is
+**700× faster than it, computing byte-identical output**.
+
 ## Quick start
 
 Needs gcc with OpenMP and NEON. On the target board:
@@ -147,38 +154,6 @@ Harness flags: `-o out.pgm`, `-g golden.pgm`, `-t threads`, `-w warmup`,
 runs; p95 and min are also recorded.
 
 ---
-
-## Why SGM is hard
-
-Stereo matching is easy to state and awkward to make fast. For every pixel you
-score **D** candidate disparities, then smooth those scores so the depth map is
-coherent rather than speckled. The smoothing is what makes it good, and it is
-also what makes it hard:
-
-    L(p, d) = C(p, d) + min( L(p−1, d),  L(p−1, d±1) + P1,  min_k L(p−1, k) + P2 ) − min_k L(p−1, k)
-
-**Every pixel depends on the pixel before it.** That is a serial recurrence along
-each of four sweep directions, so the obvious parallelism — one thread per pixel —
-is unavailable. What is left is parallelism across disparities and across
-independent scanlines, and a cross-lane `min` over all D at *every step*.
-
-Three properties fall out, and they shape every implementation here:
-
-- **The work is large and fixed.** 1920×1080 × 64 disparities × 4 paths ≈ 530M
-  updates per frame. There is no early exit and no data-dependent shortcut.
-- **The intermediate is bigger than the image.** The aggregated cost volume is
-  265 MB per frame at 1080p — 128× the input — so a tuned implementation ends up
-  **memory-bound**, not compute-bound. Ours reaches 145 GB/s of a measured
-  247 GB/s ceiling on Thor.
-- **Wide hardware does not automatically win.** A vector unit can fill lanes but
-  cannot remove the dependency; hiding it takes independent chains and costs
-  registers. That is why the ordering below is not the ordering of raw FLOPS.
-
-![SGM throughput by processing unit](docs/results.png)
-
-Every bar is bit-exact to the same golden hash. The scalar reference at the
-bottom is the floor the whole exercise is measured against — the fastest bar is
-**700× faster than it, computing byte-identical output**.
 
 ## There is dedicated stereo hardware on these parts, and we measured it
 
@@ -219,50 +194,6 @@ Thor. Quoting that as a 1080p result would overstate it by 2.3×. Every number
 above is `downscaleFactor=1`, full-resolution output. This is the same
 convention trap that made a vendor's quoted figure unusable earlier in this
 project, met again in different silicon.
-
-## The second gate: a predicted cost
-
-The golden hash catches wrong answers. It is structurally blind to a kernel that
-is **correct and slow** — and this project shipped only that gate for a full day,
-during which two separate half-scalar kernels passed it with perfect output.
-
-So there is a second gate, on by default, running in the same invocation as the
-timing for the same reason the hash check does:
-
-    make MCPU=cortex-a55 BOARD=imx95 roofline-cal   # record what "good" costs
-    make MCPU=cortex-a55 BOARD=imx95 check          # gate every run against it
-
-Each phase has a scalar-equivalent op count fixed by the workload (census is
-`2·W·H·62` compares, aggregate is `PATHS·W·H·D·4`, and so on). Measured time
-divided by op count gives **ns per op — an efficiency with a fixed denominator**,
-which a share can never be. Each phase is then checked against its own calibrated
-budget.
-
-    roofline:  census 0.0838/0.0825 1.02x  aggregate 0.1322/0.1325 1.00x
-
-Exit codes are distinct because the failures are: **2 = wrong answer**,
-**3 = right answer produced too slowly**.
-
-⚠️ **It was first built as a spread check between phases, and that does not
-work.** Comparing phases to each other needs no calibration, which is appealing,
-but it cannot catch a regression in the *fastest* phase: slowing the best phase
-moves it toward the worst and the spread **shrinks**. Measured, by planting the
-real bug — healthy spread 1.62×, planted spread 1.26×. The defect made the gate
-look healthier.
-
-**The threshold was picked by planting a defect, not by taste.** Five repeats of
-a healthy A55 build hold census to 0.0819–0.0832 ns/op (1.6% spread). Planting a
-half-scalar census — vector loop stopped 124 columns short, handing them to the
-scalar tail — measures 1.25× its calibration. The limit is 1.15: ~15× above the
-noise, below the defect, and **verified to fire**, exiting 3 with `GOLDEN OK`.
-
-A gate you have never seen go red is not evidence. If you change the model,
-plant something and watch it fail before you trust it again.
-
-Two honest limits: the calibration records what a build *someone believed was
-good* cost, so it catches regression from that point rather than a bad
-implementation overall; and it is per implementation and per board, so on an
-uncalibrated board it prints `ROOFLINE NOT ARMED` rather than passing silently.
 
 ## The workload
 
@@ -361,6 +292,19 @@ Three rules the *failures* produced:
    more than it saved.
 
 ---
+
+## How the numbers are kept honest
+
+Infrastructure rather than findings, in brief. Every run checks its output hash
+against a scalar reference **in the same invocation as the timing** and exits 2
+on mismatch — there is no mode that reports a number without the check. A second
+gate compares each phase against a calibrated cost and exits 3 when a phase is
+correct but too slow, because a golden hash cannot see a kernel that is
+bit-exact and half-scalar. The threshold was set by planting a real defect and
+confirming the gate fires.
+
+Details, and the failure modes that motivated each, are in
+[`REPORT.md`](REPORT.md) and `common/roofline.h`.
 
 ## Traps
 
