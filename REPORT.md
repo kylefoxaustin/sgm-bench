@@ -200,6 +200,50 @@ genuinely exercise the range. The timings were never wrong — SGM's work is
 data-independent — but the verification was worth nothing until the scene matched
 the range under test.
 
+### Why D gets cheaper per disparity — three architectures, three mechanisms
+
+The same observation shows up on NEON, HVX and CUDA and does **not** have the
+same cause on any two of them. The qualcomm session supplied the first two; the
+third is ours and required falsifying a wrong guess first.
+
+| | lanes | D=64→128 | mechanism |
+|---|---|---|---|
+| **NEON** (A720) | 16 bytes | **−2.4%, flat** | a vector is already FULL at D=64; extra disparities cost proportional time |
+| **HVX** (Hexagon) | 128 bytes | **+13.6%** | at D=64 the vector is HALF EMPTY; raising D fills waste, so it is nearly free |
+| **CUDA** (Thor) | warp always covers D | **+22%** | neither — see below |
+
+On CUDA the lanes are never idle: a warp covers exactly D at DPT=D/32
+disparities per lane. So the lane-filling model predicts *flat*, like NEON, and
+the measurement says otherwise.
+
+🔴 **The first explanation was wrong and was tested rather than argued.** The
+guess was that only DPT==2 took the vectorised `ushort2` S path while D=32 and
+D=128 fell back to a scalar loop — which was *true of the code* and would have
+handicapped exactly the two cells at the ends of the sweep. Generalising the
+vector path to DPT 1/2/4 changed nothing: 10.59 / 13.19 / 21.72 ms, all inside
+noise. nvcc was already emitting efficient accesses for the contiguous loop. The
+generalisation is kept because it is more honest code, not because it helped.
+
+⭐ **The actual mechanism is a fixed per-pixel cost amortised over DPT.** Every
+recurrence step does a 5-step `__shfl_xor` min-reduction plus 2 neighbour
+shuffles — **7 shuffles per pixel per path, independent of D** — serving DPT
+disparities per lane. Measured:
+
+| D | aggregate ms **per disparity** | census (D-independent) |
+|---|---|---|
+| 32 | 0.2375 | 1.08 ms = 10% of total |
+| 64 | 0.1604 | 1.08 ms = 8% |
+| 128 | 0.1424 | 1.14 ms = 5% |
+
+Census is flat in absolute terms and simply amortises. But *aggregate itself*
+gets cheaper per disparity, which census cannot explain — that is the warp
+reduction being divided over 1, then 2, then 4 disparities per lane.
+
+So it is the same *family* as the Hexagon result — a fixed cost spread over more
+useful work — while being a different quantity: idle lanes there, an
+irreducible cross-lane reduction here. And the effect is decelerating (1.48×
+then 1.13×), as it must be once the shuffle is no longer the dominant term.
+
 ### Range and field of view, DERIVED from the grid
 
 FOV is not a measured axis and must not be one: it does not change the kernel, it

@@ -156,7 +156,16 @@ template <int MODE>
 __device__ __forceinline__ void s_commit(unsigned short *s, unsigned char *sc,
                                          const unsigned char *L)
 {
-#if DPT == 2
+/* The vector width follows DPT, so every D gets one transaction per lane instead
+ * of DPT scalar ones. This was DPT==2 only until 2026-08-29, which quietly
+ * handicapped every measurement at D=32 and D=128: they fell back to the scalar
+ * loop while D=64 alone got ushort2. The D sweep was therefore comparing a tuned
+ * cell against two untuned ones and the trend it showed was UNDERSTATED. */
+#if DPT == 1
+    if (MODE == M_SCRATCH) { *sc = L[0]; return; }
+    unsigned short v = (unsigned short)(*sc + L[0]);
+    *s = (MODE == M_ACCUM) ? (unsigned short)(*s + v) : v;
+#elif DPT == 2
     if (MODE == M_SCRATCH) { uchar2 v; v.x = L[0]; v.y = L[1]; *(uchar2 *)sc = v; return; }
     uchar2 r = *(const uchar2 *)sc;
     ushort2 v;
@@ -164,6 +173,20 @@ __device__ __forceinline__ void s_commit(unsigned short *s, unsigned char *sc,
     v.y = (unsigned short)(r.y + L[1]);
     if (MODE == M_ACCUM) { ushort2 o = *(const ushort2 *)s; v.x += o.x; v.y += o.y; }
     *(ushort2 *)s = v;
+#elif DPT == 4
+    if (MODE == M_SCRATCH) {
+        uchar4 v; v.x = L[0]; v.y = L[1]; v.z = L[2]; v.w = L[3];
+        *(uchar4 *)sc = v; return;
+    }
+    uchar4 r = *(const uchar4 *)sc;
+    ushort4 v;
+    v.x = (unsigned short)(r.x + L[0]); v.y = (unsigned short)(r.y + L[1]);
+    v.z = (unsigned short)(r.z + L[2]); v.w = (unsigned short)(r.w + L[3]);
+    if (MODE == M_ACCUM) {
+        ushort4 o = *(const ushort4 *)s;
+        v.x += o.x; v.y += o.y; v.z += o.z; v.w += o.w;
+    }
+    *(ushort4 *)s = v;
 #else
     if (MODE == M_SCRATCH) { for (int k = 0; k < DPT; k++) sc[k] = L[k]; return; }
     for (int k = 0; k < DPT; k++) {
