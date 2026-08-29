@@ -7,3 +7,7 @@ data/real/
 hvx/b_*
 hvx/sgm_hvx_bench
 hvx/*.log
+
+# Middlebury scenes are not ours to redistribute; fetch them with
+# scripts/fetch_middlebury.sh. The derived PGMs are small enough to keep.
+data/real/*-perfect/
