@@ -194,17 +194,29 @@ golden (changing D changes the correct answer):
 
 | resolution | D=32 | D=64 | D=128 |
 |---|---|---|---|
-| 1920×1080 | 6,233 | 10,062 | **12,138** |
-| 1280×720 | 5,617 | 9,504 | 12,057 |
-| 960×540 | 4,079 | 8,791 | 10,835 |
-| 640×480 | 4,072 | 5,108 | 10,956 |
+| 1920×1080 | 6,266 | 10,077 | **12,260** |
+| 1280×720 | 5,639 | 9,467 | 12,025 |
+| 960×540 | 6,213 | 9,267 | 11,621 |
+| 640×480 | 6,222 | 9,187 | 11,299 |
 
-⭐ **A larger disparity range is cheaper per disparity** — 6,233 → 10,062 →
-12,138 MDE/s as D goes 32 → 64 → 128 at 1080p. And **efficiency falls as
-resolution falls**: at D=64, 10,062 → 9,504 → 8,791 → 5,108. Both reproduce what
-the qualcomm session measured on a Hexagon NSP, on entirely different silicon
-with a different implementation. Lower resolution buys **latency, not throughput
-per disparity**.
+🔴 **This grid replaces one published with 12 timed frames per cell, which was
+not enough sampling and produced a wrong number that a headline rested on.** The
+640×480 D=64 cell read 5,108 MDE/s; at 60 frames it is **9,187 — the published
+value was 80% wrong**, and it made D=128 appear *faster* than D=64 at the same
+resolution, which is physically impossible and was quoted unremarked. Found by
+an adversarial review, not by us.
+
+⭐ **A larger disparity range is cheaper per disparity** — 6,266 → 10,077 →
+12,260 MDE/s as D goes 32 → 64 → 128 at 1080p, a **+96%** gain. That finding is
+robust and matches what the qualcomm session measured on a Hexagon NSP.
+
+⚠️ **Efficiency does fall as resolution falls, but far less than we published.**
+At D=64 the corrected sweep gives 10,077 → 9,467 → 9,267 → 9,187: a **1.10×**
+fall from 1080p to VGA, not the **1.97×** that the under-sampled grid showed. The
+*direction* still agrees with the Hexagon result; the *magnitude* does not — they
+measured 962 → 631 MDE/s, a 34% fall, against our 8.8%. Claiming the two
+"reproduce" each other was too strong. Lower resolution still buys latency rather
+than throughput per disparity, but on this kernel the effect is small.
 
 🚨 **The first run of this grid produced identical hashes at D=64 and D=128, and
 that is exactly the failure qualcomm named: a check that cannot discriminate.**

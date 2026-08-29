@@ -46,7 +46,7 @@ for D in 32 64 128; do
     # `|| true`, which swallowed exit 2 (GOLDEN MISMATCH) so a wrong-answer row
     # landed in the output JSON and flowed on into the published grid.
     ./bin/sgm_sweep data/sweep/left.pgm data/sweep/right.pgm -g data/sweep/golden.pgm \
-        -w 3 -n 12 -j "$OUT" --board "${BOARD:-unknown}" --no-roofline 2>&1 | grep -E "^cuda|GOLDEN"
+        -w 10 -n 60 -j "$OUT" --board "${BOARD:-unknown}" --no-roofline 2>&1 | grep -E "^cuda|GOLDEN"
     rc=${PIPESTATUS[0]}
     if [ "$rc" != 0 ]; then echo "  ABORT: cell D=$D ${W}x${H} exited $rc"; exit "$rc"; fi
   done
