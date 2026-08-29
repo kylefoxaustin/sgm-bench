@@ -10,8 +10,12 @@
 #define SGM_PARAMS_H
 
 /* ---- Workload configuration. These are the real, benchmarked values. ---- */
+#ifndef SGM_D
 #define SGM_D          64      /* disparity range, must be a multiple of 16 */
+#endif
+#ifndef SGM_PATHS
 #define SGM_PATHS      4       /* 4 = L,R,U,D   8 = + the four diagonals   */
+#endif
 #define SGM_CENSUS_W   9       /* census window width  (odd)                */
 #define SGM_CENSUS_H   7       /* census window height (odd)                */
 

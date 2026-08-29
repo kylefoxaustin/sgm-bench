@@ -93,12 +93,14 @@ paying the DDR round trip that dominates every implementation measured here.
 
 | platform | config | threads | ms | fps | Mpix/s | **MDE/s** | best per-core |
 |---|---|---|---|---|---|---|---|
-| **NVIDIA Thor** (Blackwell, 20 SM, CUDA) ¶ | D=64 | — | 35.4 | 28.26 | 58.59 | **3,750** | — |
+| **NVIDIA Thor** (Blackwell, 20 SM, CUDA, tuned) ¶ | D=64 | — | 13.2 | 75.98 | 157.55 | **10,084** | — |
+| NVIDIA Thor — D=128, the grid's peak ¶ | D=128 | — | 21.6 | 46.25 | 95.91 | **12,276** | — |
+| NVIDIA Thor — naive OpenCL transliteration ¶ | D=64 | — | 35.4 | 28.26 | 58.59 | 3,750 | — |
 | **8× Cortex-A720** @2.2–2.5 GHz (Radxa O6) | D=64 | 8 | 51.7 | 19.4 | 40.14 | **2,569** | 423 |
 | 8× Cortex-A720 | D=128 | 8 | 105.9 | 9.5 | 19.59 | 2,507 | — |
 | 1× Cortex-A720 @2.5 GHz | D=64 | 1 | 313.6 | 3.2 | 6.61 | 423 | **423** |
 | **6× Cortex-A55** @1.8 GHz (i.MX 95 FRDM) | D=64 | 6 | 341.3 | 2.9 | 6.08 | **389** | 82 |
-| **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA) ¶ | D=64 | — | 72.3 | 13.84 | 28.69 | **1,836** | — |
+| **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA, tuned) ¶ | D=64 | — | 23.3 | 42.95 | 89.06 | **5,700** | — |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
 | **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 138.6 | 7.21 | 14.96 | **957** | — |
@@ -137,6 +139,84 @@ machines, two different answers, both measured.
 A720 423 MDE/s — a 5% gap that needs no explanation.** Two wide out-of-order Arm
 cores from different vendors land in the same place on this algorithm, which is
 a stronger statement about SGM than about either core.
+
+### Optimising the CUDA kernel: 2.7× to a measured memory wall
+
+`cuda/sgm_cuda.cu` was a transliteration of the OpenCL kernel and inherited its
+shape: 16-thread blocks (half a warp), three `__syncthreads()` **per pixel**
+inside the recurrence, `L` and the min-reduction in shared memory, and 1,080
+blocks of 16 threads to fill a 20-SM GPU. `cuda/sgm_cuda_opt.cu` keeps the
+algorithm and the hash and changes all of it.
+
+| step | Thor | | mechanism |
+|---|---|---|---|
+| naive port | 35.39 ms | — | baseline |
+| warp-per-scanline, `L` in registers, `__shfl` reduce, **zero barriers** | 16.58 ms | 2.13× | the recurrence stops touching shared memory |
+| first path **stores** instead of accumulating; `ushort2` S access | 14.61 ms | 2.42× | deletes a 265 MB memset and a 265 MB read |
+| pair the paths through a uint8 scratch: S touched 4× not 7× | **13.16 ms** | **2.69×** | 1.99 GB → 1.46 GB of traffic |
+
+Orin gets **3.10×** from the same changes (72.27 → 23.28 ms). Every step
+bit-exact; a step that broke the hash would not be in this table.
+
+⭐ **It is now memory-bound, and that is measured rather than asserted.** A
+copy-bandwidth probe on the same part returns **247 GB/s**. The aggregate phase
+moves 1.46 GB in 10.04 ms = **145 GB/s**. Before the pairing it moved 1.99 GB in
+11.37 ms = 175 GB/s — so cutting traffic 27% bought only 12% of time, because
+the uint8 scratch is a *less efficient* access pattern than the S it replaced.
+Net win, roughly half of what the traffic model predicted. **Arithmetic
+optimisation is finished here; only traffic reduction can move it further.**
+
+⚠️ Occupancy is not a lever: warps-per-block of 2, 4 and 8 land within 1%
+(14.71 / 14.59 / 14.71 ms) and 32 is clearly worse. Swept rather than guessed.
+
+### The parameter grid, and one flaw it exposed in the sweep itself
+
+MEASURED on Thor, every cell a separate build (D is compile-time) and a separate
+golden (changing D changes the correct answer):
+
+| resolution | D=32 | D=64 | D=128 |
+|---|---|---|---|
+| 1920×1080 | 6,233 | 10,084 | **12,276** |
+| 1280×720 | 5,617 | 9,504 | 12,057 |
+| 960×540 | 4,079 | 8,791 | 10,835 |
+| 640×480 | 4,072 | 5,108 | 10,956 |
+
+⭐ **A larger disparity range is cheaper per disparity** — 6,233 → 10,084 →
+12,276 MDE/s as D goes 32 → 64 → 128 at 1080p. And **efficiency falls as
+resolution falls**: at D=64, 10,084 → 9,504 → 8,791 → 5,108. Both reproduce what
+the qualcomm session measured on a Hexagon NSP, on entirely different silicon
+with a different implementation. Lower resolution buys **latency, not throughput
+per disparity**.
+
+🚨 **The first run of this grid produced identical hashes at D=64 and D=128, and
+that is exactly the failure qualcomm named: a check that cannot discriminate.**
+It is also what a kernel searching only `d < 64` would produce. Rather than
+accept twelve `GOLDEN OK` lines, the discriminating test was to read the maximum
+disparity actually present in the D=128 output: **44**. The cause was mine —
+`gen_synthetic.c` scales its scene disparities with `SGM_D`, and the sweep built
+the generator *without* `-DSGM_D`, so every cell got a D=64 scene that gave D=128
+nothing to find. Fixed; all twelve hashes are now distinct and the D=128 cells
+genuinely exercise the range. The timings were never wrong — SGM's work is
+data-independent — but the verification was worth nothing until the scene matched
+the range under test.
+
+### Range and field of view, DERIVED from the grid
+
+FOV is not a measured axis and must not be one: it does not change the kernel, it
+changes the D a given near range requires. At a 12 cm baseline:
+
+| configuration | min range | fps |
+|---|---|---|
+| 1080p, 90°, D=32 | 3.60 m | 94 |
+| 1080p, 90°, D=64 | 1.80 m | 76 |
+| 1080p, 90°, D=128 | 0.90 m | 46 |
+| 1080p, 120°, D=64 | 1.04 m | 76 |
+
+**A wider field of view is cheaper.** 90° → 120° cuts focal length 1.73×, cuts
+the D needed for the same near range by 1.73×, and sees more of the scene at the
+same cost. Nobody treats FOV as a performance knob; on this workload it is one.
+And the binding constraint on a real system is the **camera baseline**, not the
+kernel — every row above moves if B changes.
 
 ### The NVIDIA GPUs, and what they do and do not settle
 
