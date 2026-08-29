@@ -200,7 +200,65 @@ genuinely exercise the range. The timings were never wrong — SGM's work is
 data-independent — but the verification was worth nothing until the scene matched
 the range under test.
 
-### Why D gets cheaper per disparity — three architectures, three mechanisms
+### One law: raising D amortises any per-pixel cost that does not scale with D
+
+Three architectures show the same observation for three different reasons. The
+qualcomm session proposed a lane-filling model, **predicted flat for CUDA, and
+the measurement said +22%** — so the model was refuted on our hardware and the
+corrected version, theirs, is more general than either of our originals:
+
+> **Raising D amortises any per-pixel cost that does not scale with D.**
+
+| | lanes | D=64→128 | the fixed cost being amortised |
+|---|---|---|---|
+| **NEON** (A720) | 16 B | **−2.4%, flat** | *none* — a vector is already full at D=64 |
+| **HVX** (Hexagon) | 128 B | **+13.6%** | **idle lanes** — 64 of 128 doing nothing |
+| **CUDA** (Thor) | warp covers D | **+22%** | **an irreducible cross-lane reduction** |
+
+Lane-filling was the special case where the fixed cost happens to be wasted
+lanes. On CUDA the lanes are never idle, yet a cost remains: every recurrence
+step does a 5-step `__shfl_xor` min-reduction plus 2 neighbour shuffles — **7
+shuffles per pixel per path, independent of D** — divided over DPT = D/32
+disparities per lane.
+
+⭐ **And on CUDA the effect reverses.** Measured on the shared scene below:
+
+| D | ms | MDE/s |
+|---|---|---|
+| 64 | 13.19 | 10,062 |
+| 128 | 21.86 | **12,138 — peak** |
+| 256 | 56.41 | 9,409 |
+
+The Hexagon rises monotonically through D=256; Thor turns over. That is what the
+law predicts: the amortisation benefit saturates as 1/DPT while **S traffic grows
+linearly with D** (1.06 GB at D=256), so past some D the traffic term wins.
+**Which wall you hit is a property of the machine, not the algorithm** — Thor is
+memory-bound at 145 of 247 GB/s, the Hexagon is still latency-bound at 6.8 of 28.
+
+### A shared scene, because a D-sweep can fail to discriminate
+
+🚨 **A scene whose true disparities all fall below D cannot distinguish a correct
+implementation from one that silently searches a shorter range.** That applies to
+any D-sweep, ours included — and it already bit this project once, when twelve
+`GOLDEN OK` lines came from a D=64 scene.
+
+`data/shared/` is therefore a published cross-platform artefact: 1920×1080, seed
+3, generated at D=256 semantics so its true disparities reach **186** and
+truncate distinctly at 64, 128 and 256.
+
+| artefact | sha256 (first 16) | reference hash |
+|---|---|---|
+| `left.pgm` | `3d6eda655586a028` | — |
+| `right.pgm` | `9c01b6a023c1a2c1` | — |
+| `golden_d64.pgm` | `8d36365c95a8cede` | `d98d7b0718e2f8b9` |
+| `golden_d128.pgm` | `44b5ac5a39b046a2` | `97da516d22851e0c` |
+| `golden_d256.pgm` | `c7c1a2a403a223ca` | `cb492999e5700840` |
+
+Goldens are from the x86-64 scalar reference; the CUDA implementation reproduces
+all three on Thor. Three distinct hashes at three D values is the property that
+makes the sweep a test rather than a formality.
+
+### Why D gets cheaper per disparity — the CUDA mechanism in detail
 
 The same observation shows up on NEON, HVX and CUDA and does **not** have the
 same cause on any two of them. The qualcomm session supplied the first two; the
