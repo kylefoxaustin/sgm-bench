@@ -118,6 +118,50 @@ runs; p95 and min are also recorded.
 
 ---
 
+## The second gate: a predicted cost
+
+The golden hash catches wrong answers. It is structurally blind to a kernel that
+is **correct and slow** — and this project shipped only that gate for a full day,
+during which two separate half-scalar kernels passed it with perfect output.
+
+So there is a second gate, on by default, running in the same invocation as the
+timing for the same reason the hash check does:
+
+    make MCPU=cortex-a55 BOARD=imx95 roofline-cal   # record what "good" costs
+    make MCPU=cortex-a55 BOARD=imx95 check          # gate every run against it
+
+Each phase has a scalar-equivalent op count fixed by the workload (census is
+`2·W·H·62` compares, aggregate is `PATHS·W·H·D·4`, and so on). Measured time
+divided by op count gives **ns per op — an efficiency with a fixed denominator**,
+which a share can never be. Each phase is then checked against its own calibrated
+budget.
+
+    roofline:  census 0.0838/0.0825 1.02x  aggregate 0.1322/0.1325 1.00x
+
+Exit codes are distinct because the failures are: **2 = wrong answer**,
+**3 = right answer produced too slowly**.
+
+⚠️ **It was first built as a spread check between phases, and that does not
+work.** Comparing phases to each other needs no calibration, which is appealing,
+but it cannot catch a regression in the *fastest* phase: slowing the best phase
+moves it toward the worst and the spread **shrinks**. Measured, by planting the
+real bug — healthy spread 1.62×, planted spread 1.26×. The defect made the gate
+look healthier.
+
+**The threshold was picked by planting a defect, not by taste.** Five repeats of
+a healthy A55 build hold census to 0.0819–0.0832 ns/op (1.6% spread). Planting a
+half-scalar census — vector loop stopped 124 columns short, handing them to the
+scalar tail — measures 1.25× its calibration. The limit is 1.15: ~15× above the
+noise, below the defect, and **verified to fire**, exiting 3 with `GOLDEN OK`.
+
+A gate you have never seen go red is not evidence. If you change the model,
+plant something and watch it fail before you trust it again.
+
+Two honest limits: the calibration records what a build *someone believed was
+good* cost, so it catches regression from that point rather than a bad
+implementation overall; and it is per implementation and per board, so on an
+uncalibrated board it prints `ROOFLINE NOT ARMED` rather than passing silently.
+
 ## The workload
 
 All parameters live in exactly one place, [`common/sgm_params.h`](common/sgm_params.h),

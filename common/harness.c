@@ -8,6 +8,13 @@
  *     -n N              timed frames   (default 100)
  *     -j RESULTS.json   append a results record
  *     --board NAME      free text recorded in the JSON
+ *     --no-roofline     disable the cost gate (it is ON by default)
+ *     --roofline-max X  per-phase cost allowed vs calibration (default 1.15)
+ *     --roofline-cal F  calibration file (default data/golden/roofline.cal)
+ *     --roofline-calibrate   record THIS run as the calibration and exit ok
+ *
+ * Exit: 0 ok, 1 usage/IO, 2 GOLDEN MISMATCH (wrong answer),
+ *       3 ROOFLINE FAIL (right answer, one phase far off its op count).
  *
  * Prints a one-line summary and (optionally) a JSON record containing:
  * impl, board, W, H, D, paths, census, P1, P2, threads, cpu mask, warm/timed
@@ -25,6 +32,7 @@
 #include <omp.h>
 #endif
 #include "sgm.h"
+#include "roofline.h"
 
 #ifndef CFLAGS_STR
 #define CFLAGS_STR "unknown"
@@ -78,7 +86,9 @@ static void cpu_mask_string(char *buf, size_t n) {
 int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s LEFT.pgm RIGHT.pgm [-o out.pgm] [-g golden.pgm] [-t threads] [-w warm] [-n timed] [-j results.json] [--board name]\n", argv[0]); return 1; }
     const char *lpath = argv[1], *rpath = argv[2], *opath = NULL, *gpath = NULL, *jpath = NULL, *board = "unknown";
-    int threads = 0, warm = 10, timed = 100;
+    int threads = 0, warm = 10, timed = 100, roofline = 1, rl_cal_write = 0;
+    double rl_max = SGM_ROOFLINE_DEFAULT_MAX;
+    const char *rl_cal = "data/golden/roofline.cal";
     for (int i = 3; i < argc; i++) {
         if (!strcmp(argv[i], "-o") && i + 1 < argc) opath = argv[++i];
         else if (!strcmp(argv[i], "-g") && i + 1 < argc) gpath = argv[++i];
@@ -87,6 +97,10 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "-n") && i + 1 < argc) timed = atoi(argv[++i]);
         else if (!strcmp(argv[i], "-j") && i + 1 < argc) jpath = argv[++i];
         else if (!strcmp(argv[i], "--board") && i + 1 < argc) board = argv[++i];
+        else if (!strcmp(argv[i], "--no-roofline")) roofline = 0;
+        else if (!strcmp(argv[i], "--roofline-max") && i + 1 < argc) rl_max = atof(argv[++i]);
+        else if (!strcmp(argv[i], "--roofline-cal") && i + 1 < argc) rl_cal = argv[++i];
+        else if (!strcmp(argv[i], "--roofline-calibrate")) rl_cal_write = 1;
         else { fprintf(stderr, "unknown arg %s\n", argv[i]); return 1; }
     }
 
@@ -166,6 +180,16 @@ int main(int argc, char **argv) {
            SGM_IMPL.name, W, H, SGM_D, SGM_PATHS, threads_actual, med, p95, mn, fps, mpix,
            (unsigned long long)hash, golden_match == 1 ? "  GOLDEN OK" : golden_match == 0 ? "  GOLDEN FAIL" : "");
 
+    /* The COST gate. Runs by default and in the same invocation as the timing,
+     * for the same reason the hash check does: a gate nobody remembers to run
+     * is one of the ways a check reads green while being worthless. */
+    int rl_fail = 0, rl_armed = 0;
+    if (rl_cal_write)
+        sgm_roofline_calibrate(rl_cal, SGM_IMPL.name, board, W, H, &st);
+    else if (roofline)
+        rl_fail = sgm_roofline_check(rl_cal, SGM_IMPL.name, board, W, H, &st,
+                                     rl_max, 1, &rl_armed);
+
     if (jpath) {
         FILE *f = fopen(jpath, "a");
         if (!f) { fprintf(stderr, "cannot open %s\n", jpath); return 1; }
@@ -174,13 +198,17 @@ int main(int argc, char **argv) {
                    "\"threads\":%d,\"threads_requested\":%d,\"cpu_mask\":\"%s\",\"warm\":%d,\"timed\":%d,"
                    "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"fps\":%.3f,\"mpix_s\":%.3f,"
                    "\"census_ms\":%.3f,\"cost_ms\":%.3f,\"aggregate_ms\":%.3f,\"argmin_ms\":%.3f,"
-                   "\"hash\":\"%016llx\",\"golden_match\":%d,\"cflags\":\"%s\",\"git\":\"%s\",\"ts\":\"%s\"}\n",
+                   "\"hash\":\"%016llx\",\"golden_match\":%d,\"roofline_ok\":%d,\"cflags\":\"%s\",\"git\":\"%s\",\"ts\":\"%s\"}\n",
                 SGM_IMPL.name, board, W, H, SGM_D, SGM_PATHS, SGM_CENSUS_W, SGM_CENSUS_H, SGM_P1, SGM_P2,
                 threads_actual, threads, mask, warm, timed, med, p95, mn, fps, mpix,
                 st.census_ms, st.cost_ms, st.aggregate_ms, st.argmin_ms,
-                (unsigned long long)hash, golden_match, CFLAGS_STR, GIT_SHA, ts);
+                (unsigned long long)hash, golden_match, rl_armed ? !rl_fail : -1, CFLAGS_STR, GIT_SHA, ts);
         fclose(f);
     }
     free(L); free(R); free(disp); free(ms);
-    return golden_match == 0 ? 2 : 0;
+    /* 2 = wrong answer, 3 = right answer produced too slowly. Distinct codes
+     * because they are distinct failures and a caller should be able to tell
+     * them apart; correctness outranks cost when both fire. */
+    if (golden_match == 0) return 2;
+    return rl_fail ? 3 : 0;
 }

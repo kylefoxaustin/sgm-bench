@@ -10,6 +10,7 @@
 
 CC      ?= gcc
 MCPU    ?= native
+BOARD   ?= unknown
 OPT     ?= -O3
 GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo nogit)
 
@@ -71,15 +72,27 @@ golden: bin/sgm_ref data/synthetic/left.pgm
 	  ./bin/sgm_ref data/real/left.pgm data/real/right.pgm -w 0 -n 1 -o data/golden/real.pgm && \
 	  sha256sum data/golden/real.pgm > data/golden/real.sha256; fi
 
+# ---- calibrate the cost gate on a build you trust ----
+# The roofline gate is armed by a calibration recorded per implementation and
+# per board. Run this ONLY on a build you have reason to believe is healthy:
+# it records what "good" costs, and everything afterwards is checked against it.
+roofline-cal: all
+	@mkdir -p data/golden
+	@for b in bin/sgm_*; do \
+	  [ "$$b" = bin/sgm_ref ] && continue; \
+	  $$b data/synthetic/left.pgm data/synthetic/right.pgm -w 1 -n 5 \
+	     --board $(BOARD) --roofline-calibrate || exit $$?; \
+	done
+
 # ---- check every implementation against golden ----
 check: all
 	@for b in bin/sgm_*; do \
 	  [ "$$b" = bin/sgm_ref ] && continue; \
-	  $$b data/synthetic/left.pgm data/synthetic/right.pgm -g data/golden/synthetic.pgm -w 1 -n 3 || exit 2; \
-	  if [ -f data/real/left.pgm ]; then $$b data/real/left.pgm data/real/right.pgm -g data/golden/real.pgm -w 1 -n 3 || exit 2; fi; \
+	  $$b data/synthetic/left.pgm data/synthetic/right.pgm -g data/golden/synthetic.pgm -w 1 -n 3 --board $(BOARD) || exit $$?; \
+	  if [ -f data/real/left.pgm ]; then $$b data/real/left.pgm data/real/right.pgm -g data/golden/real.pgm -w 1 -n 3 || exit $$?; fi; \
 	done
 
 clean:
 	rm -rf bin
 
-.PHONY: all golden check clean
+.PHONY: all golden check clean roofline-cal
