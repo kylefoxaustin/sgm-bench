@@ -645,6 +645,38 @@ Orin and the 5090 did not exist until someone asked whether they had been
 recorded. A memory-bound conclusion resting on one machine's memory measurement
 is thinner than it looked.
 
+## Real imagery, and the last unverified rows
+
+⭐ **Every published row is now verified against a golden that discriminates.**
+The two Mali rows were the last resting on the old blind golden; both re-run:
+
+| | published | re-verified | spread |
+|---|---|---|---|
+| Mali-G720 (10 CU) | 256 ms | **257.13 ms** ✓ | 1.01 |
+| Mali-G310 (1 CU) | 1846 ms | **1848.96 ms** ✓ | 1.00 |
+
+Unchanged within 0.4%, both `GOLDEN OK` on `46470bd7a464469d`.
+
+⚠️ The G310 build needed `/usr/lib/libOpenCL.so.1` linked directly: the `.so`
+symlink a linker looks for does not exist on that image. That is the same shape
+as the "no compute driver" myth this report already documents — the runtime is
+present and working, and only a missing development symlink makes it look absent.
+
+### The cost gate is now armed on seven configurations
+
+It was armed on three, and not on the tuned kernel at all. Now:
+
+    a55 imx95 988x666 D128        mali_cl imx95 1920x1080 D64
+    a55 o6    988x666 D128        mali_cl o6    1920x1080 D64
+    cuda_opt thor / orin / rtx5090  988x666 D128
+
+⭐ **And the calibration is diagnostic even where it passes.** The G720's argmin
+runs at 0.654 ns/op against census at 0.064 — **ten times less efficient than the
+cheapest phase in the same kernel**, which is the serial 64-iteration argmin
+scan, one work-item per pixel. The same bottleneck the CUDA port had before it
+was rewritten as a warp reduction. The gate does not fire, because it is
+calibrated against itself, but the numbers name the phase to fix.
+
 ## Measurement quality: dispersion, transfers, and observed thread counts
 
 Three instrument defects were fixed after review. All targets were then
