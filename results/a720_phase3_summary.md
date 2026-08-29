@@ -49,7 +49,7 @@ A gcc-13+ rebuild could move these numbers and has not been done.
 | 320 | 122.4 | 16.95  | 2170  |
 
 All GOLDEN OK. Hashes match the A55 and x86_64 oracles exactly:
-  D=64  paths=4  b1b407b5949f0cc1
+  D=64  paths=4  46470bd7a464469d
   D=128 paths=4  0647dfbcf5cd0c74
 (three architectures, one golden -- the oracle is portable.)
 

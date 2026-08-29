@@ -59,11 +59,34 @@ int main(int argc, char **argv) {
     int bgd = SGM_D / 8;
     memset(gtr, bgd, (size_t)W * H);
     rng = seed * 31 + 5;
-    int nslab = 6;
+    int nslab = 12;   /* more slabs = more distinct disparities = a scene that
+                       * discriminates at more truncation points */
     for (int s = 0; s < nslab; s++) {
         int sw = W / 6 + (xr() % (W / 4)), sh = H / 6 + (xr() % (H / 4));
         int sx = xr() % (W - sw), sy = xr() % (H - sh);
-        int d = SGM_D / 4 + (xr() % (SGM_D / 2)); if (d > SGM_D - 2) d = SGM_D - 2;
+        /* Disparity must SPAN THE WHOLE RANGE, including the very top.
+         *
+         * This used to be SGM_D/4 + rand % (SGM_D/2), whose maximum is 3D/4 - 1
+         * -- 47 at D=64. The top quarter of every range was therefore
+         * unreachable, and the `if (d > SGM_D-2)` clamp that followed was dead
+         * code that made the bound look deliberate. The consequence was not
+         * cosmetic: the golden it produced could be reproduced byte-for-byte by
+         * an implementation that only ever searched d < 45, so for every target
+         * accepted against it the top 30% of the disparity range was never
+         * verified as reachable. A scene that cannot exercise a disparity
+         * cannot test whether an implementation can find it.
+         *
+         * Slabs now span bgd+1 .. SGM_D-2 with the LAST slab pinned to the
+         * maximum, so the top of the range is always populated by construction
+         * rather than by luck of the seed. */
+        int dlo = bgd + 1, dhi = SGM_D - 2;
+        /* STRATIFIED: slab s draws from band s, so the slabs cover the range
+         * evenly instead of clustering wherever the RNG happens to land. The
+         * last slab is pinned to the maximum so the very top is always present. */
+        int blo = dlo + (dhi - dlo) * s / nslab;
+        int bhi = dlo + (dhi - dlo) * (s + 1) / nslab;
+        if (bhi <= blo) bhi = blo + 1;
+        int d = (s == nslab - 1) ? dhi : blo + (int)(xr() % (unsigned)(bhi - blo));
         for (int y = sy; y < sy + sh; y++) for (int x = sx; x < sx + sw; x++) {
             if (d > gtr[y * W + x]) { gtr[y * W + x] = d; right[y * W + x] = slab[y * W + x]; }
         }

@@ -42,8 +42,13 @@ for D in 32 64 128; do
         && nvcc -o bin/sgm_sweep /tmp/swh.o /tmp/swu.o /tmp/sw.o 2>/dev/null \
         || { echo "  impl build failed"; continue; }
 
+    # A failed cell must STOP the sweep, not scroll past it. This used to end in
+    # `|| true`, which swallowed exit 2 (GOLDEN MISMATCH) so a wrong-answer row
+    # landed in the output JSON and flowed on into the published grid.
     ./bin/sgm_sweep data/sweep/left.pgm data/sweep/right.pgm -g data/sweep/golden.pgm \
-        -w 3 -n 12 -j "$OUT" --board "${BOARD:-unknown}" --no-roofline 2>&1 | grep -E "^cuda|GOLDEN" || true
+        -w 3 -n 12 -j "$OUT" --board "${BOARD:-unknown}" --no-roofline 2>&1 | grep -E "^cuda|GOLDEN"
+    rc=${PIPESTATUS[0]}
+    if [ "$rc" != 0 ]; then echo "  ABORT: cell D=$D ${W}x${H} exited $rc"; exit "$rc"; fi
   done
 done
 echo "grid written to $OUT"

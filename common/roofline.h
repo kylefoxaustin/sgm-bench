@@ -86,7 +86,8 @@ static inline int sgm_roofline_calibrate(const char *path, const char *impl, con
     if (!f) { fprintf(stderr, "cannot write calibration %s\n", path); return 1; }
     for (int i = 0; i < SGM_RL_PHASES; i++) {
         if (ms[i] < 0 || ops[i] == 0) continue;
-        fprintf(f, "%s %s %s %.6f\n", impl, board, sgm_rl_names[i], ms[i] * 1e6 / ops[i]);
+        fprintf(f, "%s %s %dx%d D%d %s %.6f\n", impl, board, W, H, SGM_D,
+                sgm_rl_names[i], ms[i] * 1e6 / ops[i]);
     }
     fclose(f);
     fprintf(stderr, "roofline: calibration written to %s for %s/%s\n", path, impl, board);
@@ -102,6 +103,15 @@ static inline int sgm_roofline_check(const char *path, const char *impl, const c
     const double ms[SGM_RL_PHASES] = { t->census_ms, t->cost_ms, t->aggregate_ms, t->argmin_ms };
     *armed = 0;
 
+    /* Fused phases fold their ops into aggregate -- but if AGGREGATE itself is
+     * unreported, those ops have nowhere to go and ~94% of the work would be
+     * silently ungated while the gate still printed a green line. Fail closed. */
+    if (t->aggregate_ms < 0) {
+        fprintf(stderr, "ROOFLINE FAIL: aggregate_ms unreported, so the ops folded "
+                        "into it are unaccounted for and most of the work would go "
+                        "unchecked. Report a stage time for aggregate.\n");
+        return 1;
+    }
     int any = 0;
     for (int i = 0; i < SGM_RL_PHASES; i++) if (ms[i] >= 0 && ops[i] > 0) any = 1;
     if (!any) {
@@ -118,17 +128,27 @@ static inline int sgm_roofline_check(const char *path, const char *impl, const c
         return 0;
     }
 
+    /* The key includes RESOLUTION and D, not just impl+board. ns/op moves ~22%
+     * with D and ~1.5x across the resolution sweep, so a calibration taken at
+     * one configuration either false-fails another or forces --no-roofline --
+     * which is exactly what the sweep script used to do. A cal entry now only
+     * matches the configuration it was recorded at. */
+    char want[96]; snprintf(want, sizeof want, "%dx%d D%d", W, H, SGM_D);
     double cal[SGM_RL_PHASES]; for (int i = 0; i < SGM_RL_PHASES; i++) cal[i] = -1;
-    char li[64], lb[64], lp[64]; double v;
-    while (fscanf(f, "%63s %63s %63s %lf", li, lb, lp, &v) == 4)
+    char li[64], lb[64], lr[64], ld[64], lp[64]; double v;
+    while (fscanf(f, "%63s %63s %63s %63s %63s %lf", li, lb, lr, ld, lp, &v) == 6) {
+        char got[96]; snprintf(got, sizeof got, "%s %s", lr, ld);
         for (int i = 0; i < SGM_RL_PHASES; i++)
-            if (!strcmp(li, impl) && !strcmp(lb, board) && !strcmp(lp, sgm_rl_names[i])) cal[i] = v;
+            if (!strcmp(li, impl) && !strcmp(lb, board) && !strcmp(got, want)
+                && !strcmp(lp, sgm_rl_names[i])) cal[i] = v;
+    }
     fclose(f);
 
     int have = 0; for (int i = 0; i < SGM_RL_PHASES; i++) if (cal[i] > 0) have = 1;
     if (!have) {
-        fprintf(stderr, "ROOFLINE NOT ARMED: calibration file has no entry for %s/%s. "
-                        "Run `make roofline-cal` on this board.\n", impl, board);
+        fprintf(stderr, "ROOFLINE NOT ARMED: no calibration for %s/%s at %dx%d D=%d. "
+                        "Run `make roofline-cal` for this configuration.\n",
+                impl, board, W, H, SGM_D);
         return 0;
     }
 

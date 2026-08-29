@@ -1,8 +1,3 @@
-a55 imx95 aggregate 0.132457
-a55 imx95 census 0.082478
-cuda orin aggregate 0.027127
-cuda orin argmin 0.053450
-cuda orin census 0.013729
-cuda thor aggregate 0.013129
-cuda thor argmin 0.034344
-cuda thor census 0.007325
+cuda_opt rtx5090 1920x1080 D64 census 0.001868
+cuda_opt rtx5090 1920x1080 D64 aggregate 0.001166
+cuda_opt rtx5090 1920x1080 D64 argmin 0.003117

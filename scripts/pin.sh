@@ -12,7 +12,7 @@
 #   0xd03 Cortex-A53   0xd0a Cortex-A75    0xd41 Cortex-A78
 #   0xd4d Cortex-A715  0xd4e Cortex-X3     0xd82 Cortex-X4
 
-declare -A SGM_PART=( [a55]=0xd05 [a520]=0xd80 [a720]=0xd81 [a53]=0xd03 [a75]=0xd0a [a78]=0xd41 [a715]=0xd4d [x3]=0xd4e [x4]=0xd82 )
+declare -A SGM_PART=( [a55]=0xd05 [a520]=0xd80 [a720]=0xd81 [a53]=0xd03 [a75]=0xd0a [a78]=0xd41 [a78c]=0xd4b [a715]=0xd4d [x3]=0xd4e [x4]=0xd82 )
 
 _midr_part() {  # cpu number -> part id as 0x???
   local f=/sys/devices/system/cpu/cpu$1/regs/identification/midr_el1
@@ -63,5 +63,5 @@ pin_run() {  # uarch, nthreads, cmd...
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   echo "cpu topology by MIDR:"
   for c in /sys/devices/system/cpu/cpu[0-9]*; do n=${c##*cpu}; echo "  cpu$n part $(_midr_part "$n")"; done
-  for u in a55 a520 a720 a53 a78 a715 x4; do l=$(pin_list $u); [ -n "$l" ] && echo "  $u: $l"; done
+  for u in a55 a520 a720 a53 a78 a78c a715 x4; do l=$(pin_list $u); [ -n "$l" ] && echo "  $u: $l"; done
 fi

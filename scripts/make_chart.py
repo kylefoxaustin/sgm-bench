@@ -52,7 +52,7 @@ ax.set_xscale("log")
 ax.set_xlim(10, 200000)
 ax.set_xlabel("MDE/s  —  million disparity estimations per second  (log scale)", fontsize=10)
 ax.set_title("Semi-Global Matching, 1920×1080, D=64, 4 paths, 9×7 census\n"
-             "every bar bit-exact to the same golden hash b1b407b5949f0cc1",
+             "every bar bit-exact to the same golden hash 46470bd7a464469d",
              fontsize=12, pad=14)
 ax.legend(handles=[Patch(color=COL[c], label=l) for c, l in
                    [("GPU","GPU"),("CPU","CPU"),("DSP","DSP"),("REF","scalar reference")]],

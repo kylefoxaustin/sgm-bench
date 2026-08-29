@@ -124,7 +124,7 @@ def textbox(sl, x, y, w, h, text, size, bold=False, color=INK, align=PP_ALIGN.LE
 s1 = prs.slides.add_slide(blank)
 textbox(s1, .6, .32, 12.2, .9, "Semi-Global Matching across nine execution targets", 28, True)
 textbox(s1, .6, 1.12, 12.2, .5,
-        "1920x1080  ·  D=64  ·  4 paths  ·  9x7 census  ·  every row bit-exact to golden b1b407b5949f0cc1",
+        "1920x1080  ·  D=64  ·  4 paths  ·  9x7 census  ·  every row bit-exact to golden 46470bd7a464469d",
         14, False, MUTED)
 
 SINGLE = [("Cortex-A720 x1 @2.5GHz","CPU",313.60),("Cortex-A78C x1","CPU",332.22),

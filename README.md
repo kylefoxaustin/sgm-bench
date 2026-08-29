@@ -52,7 +52,7 @@ streaming-copy probe on each part:
 | GPU | aggregate | achieved | ceiling | utilisation | MDE/s |
 |---|---|---|---|---|---|
 | RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 37,383 |
-| Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,061 |
+| Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,062 |
 | Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 |
 
 **Largely yes, and the residual is the interesting part.** All three land in a
@@ -111,7 +111,7 @@ Three properties fall out, and they shape every implementation here:
 - **The intermediate is bigger than the image.** The aggregated cost volume is
   265 MB per frame at 1080p — 128× the input — so a tuned implementation ends up
   **memory-bound**, not compute-bound. Ours reaches 145 GB/s of a measured
-  247 GB/s ceiling on Thor.
+  249 GB/s ceiling on Thor.
 - **Wide hardware does not automatically win.** A vector unit can fill lanes but
   cannot remove the dependency; hiding it takes independent chains and costs
   registers. That is why the ordering below is not the ordering of raw FLOPS.
@@ -295,9 +295,13 @@ Three rules the *failures* produced:
 
 ## How the numbers are kept honest
 
-Infrastructure rather than findings, in brief. Every run checks its output hash
-against a scalar reference **in the same invocation as the timing** and exits 2
-on mismatch — there is no mode that reports a number without the check. A second
+Infrastructure rather than findings, in brief. A run given `-g` checks its output
+hash against a scalar reference **in the same invocation as the timing** and
+exits 2 on mismatch. ⚠️ `-g` is optional: omit it and you get a timing with
+`golden_match: -1`, so "no number without a check" describes the gated path, not
+the tool. `sweep.sh` and `geometry.py` now enforce it — a mismatched cell aborts
+the sweep and unverified rows are refused entry to the grid — but that was added
+on 2026-08-29 after a review found both were letting failures through. A second
 gate compares each phase against a calibrated cost and exits 3 when a phase is
 correct but too slow, because a golden hash cannot see a kernel that is
 bit-exact and half-scalar. The threshold was set by planting a real defect and

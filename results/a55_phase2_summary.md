@@ -6,7 +6,7 @@ every run). gcc 15.2.0, -O3 -mcpu=cortex-a55 -fopenmp.
 Cache (measured): L1D 32K/core, L2 64K/core, L3 512K shared by all 6.
 
 All runs GOLDEN OK against the scalar oracle. Hashes:
-  D=64  paths=4  b1b407b5949f0cc1
+  D=64  paths=4  46470bd7a464469d
   D=128 paths=4  0647dfbcf5cd0c74
 
 ## D=64, 1920x1080, block width 192

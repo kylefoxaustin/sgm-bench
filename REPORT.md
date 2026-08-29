@@ -10,18 +10,26 @@ against a measured one without saying so.
 
 ## The headline
 
-**2,569 MDE/s at 1920×1080 on eight Cortex-A720 cores — 10.6× the fastest
-published Arm-CPU SGM, bit-exact.** That remains the headline because it is the
+**2,507 MDE/s at 1920×1080 D=128 on eight Cortex-A720 cores — 10.4× the
+fastest published Arm-CPU SGM, bit-exact, at MATCHED D and matched path
+count.** (Our D=64 figure is 2,569, but the published comparator is a D=128
+number, so the matched pair is the only honest ratio.) That remains the headline because it is the
 *CPU* result and the literature comparison is against CPUs; a Jetson Thor doing
-3,750 MDE/s through CUDA now sits above it in the table, and is a different
+37,383 MDE/s through CUDA now sits above it in the table, and is a different
 claim about different silicon.
 
 Bit-exact means byte-identical to a scalar reference implementation, verified
-on every run. The same golden hash (`b1b407b5949f0cc1`) is produced by **nine
-independent execution targets**: x86-64, Cortex-A55, Cortex-A720, Cortex-A78C,
-two Mali GPUs through OpenCL, a Hexagon v73 NSP through FastRPC, and two NVIDIA
-GPUs through CUDA — four vendors, four instruction sets, three processor
-classes. A run whose hash does
+on every run. The same golden hash (`46470bd7a464469d`) is produced by **nine
+execution targets**: x86-64, Cortex-A55, Cortex-A720, Cortex-A78C, two Mali GPUs
+through OpenCL, a Hexagon v73 NSP through FastRPC, and three NVIDIA GPUs through
+CUDA — four vendors, four instruction sets, three processor classes.
+
+⚠️ **"Independent" would overstate it.** These ten targets run roughly four
+codebases: the scalar reference, the NEON implementation (shared unmodified by
+A55, A720 and A78C), the OpenCL kernel and its mechanical CUDA port, and the
+independently-written HVX kernel. The hash pins "matches this reference", not
+"is SGM" — a shared misreading of the specification would pass on all of them.
+Genuine independence exists for the HVX port and partially for OpenCL. A run whose hash does
 not match is void and its timing is discarded.
 
 ---
@@ -93,8 +101,8 @@ paying the DDR round trip that dominates every implementation measured here.
 
 | platform | config | threads | ms | fps | Mpix/s | **MDE/s** | best per-core |
 |---|---|---|---|---|---|---|---|
-| **NVIDIA Thor** (Blackwell, 20 SM, CUDA, tuned) ¶ | D=64 | — | 13.2 | 75.98 | 157.55 | **10,084** | — |
-| NVIDIA Thor — D=128, the grid's peak ¶ | D=128 | — | 21.6 | 46.25 | 95.91 | **12,276** | — |
+| **NVIDIA Thor** (Blackwell, 20 SM, CUDA, tuned) ¶ | D=64 | — | 13.2 | 75.35 | 156.24 | **10,062** | — |
+| NVIDIA Thor — D=128, the grid's peak ¶ | D=128 | — | 21.6 | 46.25 | 95.91 | **12,138** | — |
 | NVIDIA Thor — naive OpenCL transliteration ¶ | D=64 | — | 35.4 | 28.26 | 58.59 | 3,750 | — |
 | **8× Cortex-A720** @2.2–2.5 GHz (Radxa O6) | D=64 | 8 | 51.7 | 19.4 | 40.14 | **2,569** | 423 |
 | 8× Cortex-A720 | D=128 | 8 | 105.9 | 9.5 | 19.59 | 2,507 | — |
@@ -110,13 +118,13 @@ paying the DDR round trip that dominates every implementation measured here.
 ‡ **Controlled cross-vendor comparison, contributed by the qualcomm session.**
 Not an estimate and not a different implementation: they ran *this repository's*
 `a55` NEON implementation unmodified, verified the input PGMs on-board against
-the published sha256, and reproduced the golden FNV-1a `b1b407b5949f0cc1` at
+the published sha256, and reproduced the golden FNV-1a `46470bd7a464469d` at
 every thread count. Same D, paths, census window and penalties. MEASURED.
 
 § **Hexagon row is a different implementation** — an independent HVX/FastRPC
 port written by the qualcomm session, not this repository's NEON code. What is
 shared is the *specification and the acceptance test*: identical D, paths,
-census window, penalties, and the same golden hash `b1b407b5949f0cc1`, held at
+census window, penalties, and the same golden hash `46470bd7a464469d`, held at
 1, 2, 4 and 6 DSP threads, with inputs sha256-verified on the board. MEASURED
 on their hardware; reproduced here by trust in that hash, not by my own run.
 
@@ -159,7 +167,7 @@ Orin gets **3.10×** from the same changes (72.27 → 23.28 ms). Every step
 bit-exact; a step that broke the hash would not be in this table.
 
 ⭐ **It is now memory-bound, and that is measured rather than asserted.** A
-copy-bandwidth probe on the same part returns **247 GB/s**. The aggregate phase
+copy-bandwidth probe on the same part returns **249 GB/s**. The aggregate phase
 moves 1.46 GB in 10.04 ms = **145 GB/s**. Before the pairing it moved 1.99 GB in
 11.37 ms = 175 GB/s — so cutting traffic 27% bought only 12% of time, because
 the uint8 scratch is a *less efficient* access pattern than the S it replaced.
@@ -176,14 +184,14 @@ golden (changing D changes the correct answer):
 
 | resolution | D=32 | D=64 | D=128 |
 |---|---|---|---|
-| 1920×1080 | 6,233 | 10,084 | **12,276** |
+| 1920×1080 | 6,233 | 10,062 | **12,138** |
 | 1280×720 | 5,617 | 9,504 | 12,057 |
 | 960×540 | 4,079 | 8,791 | 10,835 |
 | 640×480 | 4,072 | 5,108 | 10,956 |
 
-⭐ **A larger disparity range is cheaper per disparity** — 6,233 → 10,084 →
-12,276 MDE/s as D goes 32 → 64 → 128 at 1080p. And **efficiency falls as
-resolution falls**: at D=64, 10,084 → 9,504 → 8,791 → 5,108. Both reproduce what
+⭐ **A larger disparity range is cheaper per disparity** — 6,233 → 10,062 →
+12,138 MDE/s as D goes 32 → 64 → 128 at 1080p. And **efficiency falls as
+resolution falls**: at D=64, 10,062 → 9,504 → 8,791 → 5,108. Both reproduce what
 the qualcomm session measured on a Hexagon NSP, on entirely different silicon
 with a different implementation. Lower resolution buys **latency, not throughput
 per disparity**.
@@ -233,7 +241,7 @@ The Hexagon rises monotonically through D=256; Thor turns over. That is what the
 law predicts: the amortisation benefit saturates as 1/DPT while **S traffic grows
 linearly with D** (1.06 GB at D=256), so past some D the traffic term wins.
 **Which wall you hit is a property of the machine, not the algorithm** — Thor is
-memory-bound at 145 of 247 GB/s, the Hexagon is still latency-bound at 6.8 of 28.
+memory-bound at 145 of 249 GB/s, the Hexagon is still latency-bound at 6.8 of 28.
 
 ### A shared scene, because a D-sweep can fail to discriminate
 
@@ -250,9 +258,9 @@ truncate distinctly at 64, 128 and 256.
 |---|---|---|
 | `left.pgm` | `3d6eda655586a028` | — |
 | `right.pgm` | `9c01b6a023c1a2c1` | — |
-| `golden_d64.pgm` | `8d36365c95a8cede` | `d98d7b0718e2f8b9` |
-| `golden_d128.pgm` | `44b5ac5a39b046a2` | `97da516d22851e0c` |
-| `golden_d256.pgm` | `c7c1a2a403a223ca` | `cb492999e5700840` |
+| `golden_d64.pgm` | `8d36365c95a8cede` | `4518557a40d1b500` |
+| `golden_d128.pgm` | `44b5ac5a39b046a2` | `3d99f1c7e392c712` |
+| `golden_d256.pgm` | `c7c1a2a403a223ca` | `6c38c42dc67b4d33` |
 
 Goldens are from the x86-64 scalar reference; the CUDA implementation reproduces
 all three on Thor. Three distinct hashes at three D values is the property that
@@ -520,7 +528,7 @@ phase:
 | GPU | aggregate | achieved | ceiling | utilisation | MDE/s | MDE/s per GB/s |
 |---|---|---|---|---|---|---|
 | RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 37,383 | 27.0 |
-| Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,061 | 40.5 |
+| Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,062 | 40.5 |
 | Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 | 32.5 |
 
 **Largely yes.** Across a 7.9× spread in bandwidth, utilisation stays in a narrow
@@ -539,6 +547,78 @@ one board (Thor) and used to justify a claim about all of them. The ceilings for
 Orin and the 5090 did not exist until someone asked whether they had been
 recorded. A memory-bound conclusion resting on one machine's memory measurement
 is thinner than it looked.
+
+## 🔴 The acceptance model was broken, and an independent review found it
+
+**Until 2026-08-29 the primary golden could not discriminate the top third of the
+disparity range.** `data/golden/synthetic.pgm` had a maximum disparity of 44 with
+`SGM_D=64`, so disparities 45–63 never won anywhere in it. The consequence,
+proven by an independent numpy re-implementation and confirmed here:
+
+> **An implementation that only searched `d < 45` reproduced the golden
+> byte-for-byte.**
+
+Every target accepted against that golden — A55, A720, A78C, both Malis, the
+Hexagon — had the top 30% of its disparity range verified by nothing. Only the
+CUDA implementation had also been run against the `data/shared` goldens.
+
+**The root cause was structural, not a bad seed.** `gen_synthetic.c` assigned
+slab disparity as `SGM_D/4 + rand % (SGM_D/2)`, whose maximum is `3D/4 − 1` — 47
+at D=64. The generator could never populate the top quarter of *any* range, and
+the `if (d > SGM_D-2)` clamp that followed was dead code that made the bound look
+deliberate. The shared D=256 scene topped out at 187 for the same reason.
+
+⚠️ **This project named this exact failure mode, then shipped it.** "A check that
+cannot discriminate" is documented below as one of four ways a gate reads green
+while being worthless. It was fixed for the D-sweep scene and never checked for
+in the primary golden — and `max disparity present = 44` was actually *measured*
+during the sweep work and read as a build-flag problem rather than an
+acceptance-model one. **Having a name for a failure is not the same as having
+checked for it.**
+
+### What was done about it
+
+- **The generator now spans the full range.** Slab disparities are stratified
+  across `bgd+1 .. SGM_D-2` in bands, with the last slab pinned to the maximum,
+  so the top is populated by construction rather than by luck of the seed. Slab
+  count raised 6 → 12.
+- **`scripts/check_golden_discriminates.py` asserts the property**, so this
+  cannot silently recur. It fails the old golden and passes the new ones.
+- **Every golden was regenerated and every reachable target re-verified.**
+
+| golden | old hash | new hash | top disparity |
+|---|---|---|---|
+| primary D=64 | `b1b407b5949f0cc1` | **`46470bd7a464469d`** | 44 → **63** |
+| shared D=64 | `d98d7b0718e2f8b9` | **`4518557a40d1b500`** | → 63 |
+| shared D=128 | `97da516d22851e0c` | **`3d99f1c7e392c712`** | → 127 |
+| shared D=256 | `cb492999e5700840` | **`6c38c42dc67b4d33`** | 187 → **254** |
+
+⭐ **Every implementation passed the corrected goldens, with timings unchanged
+within noise** — A55 342.76 ms (was 341.3), Thor 13.27 (13.19), Orin 23.51
+(23.28), 5090 3.32 (3.55). So the implementations were right all along and no
+published timing needed revision. **Only the evidence was weak** — which is
+precisely the situation a gate exists to prevent you from being in unknowingly.
+
+### The other things the review found
+
+- **`sweep.sh` swallowed `GOLDEN MISMATCH`** with `|| true`, so a wrong-answer
+  cell landed in the results JSON. It now aborts.
+- **`geometry.py` ingested every row with no `golden_match` filter**, so a failed
+  cell's timing flowed into the published grid and every DERIVED range/FOV figure
+  computed from it. It now refuses unverified rows.
+- **The cost gate was never armed on the tuned kernel.** It registers as
+  `cuda_opt`; the calibration file held `cuda` entries from the *naive* kernel,
+  so no key matched. `sweep.sh` passed `--no-roofline` outright, and `make check`
+  defaults `BOARD=unknown`. "On by default" described a code path, not the
+  published measurements.
+- **The calibration key ignored resolution and D**, while the repo's own data
+  shows ns/op moving 22% with D — so any legitimate configuration change either
+  false-failed or forced `--no-roofline`. The key now includes both.
+- **The roofline failed *open* on a missing aggregate phase**, leaving ~94% of the
+  work ungated while printing a green line. It now fails closed.
+- **`pin.sh` could not pin the A78C at all** — it maps `a78 → 0xd41`, but the
+  A78C's MIDR part is `0xd4b`. The "always pin" methodology cannot have produced
+  the A78C rows with this tool. Added.
 
 ## 🔍 Adversarial review of these results
 
@@ -592,7 +672,7 @@ it. The excluded work is sub-millisecond against 9–22 ms, so this biases in
 OFA's favour by under ~5% and does not change the conclusion — but the two
 numbers are not the same measurement and should not be quoted as if they were.
 
-### 4. ⚠️ The 247 GB/s ceiling is a best case, so "59% of it" understates us
+### 4. ⚠️ The 249 GB/s ceiling is a best case, so "59% of it" understates us
 
 That figure comes from a pure `float4` streaming copy. Our aggregate phase is a
 read-modify-write over a 265 MB working set with a half-width scratch — a
@@ -630,7 +710,7 @@ they not, their single-thread baseline would have been 2.6× too fast — and
 their DSP comparison correspondingly flattered.
 
 Controlled A/B on 6× A55 confirming both the defect and the fix (MEASURED,
-i.MX 95 FRDM, `OMP_NUM_THREADS` unset, golden `b1b407b5949f0cc1` on all four):
+i.MX 95 FRDM, `OMP_NUM_THREADS` unset, golden `46470bd7a464469d` on all four):
 
 | harness | `-t 1` | `-t 6` | ratio |
 |---|---|---|---|

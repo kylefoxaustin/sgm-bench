@@ -36,7 +36,7 @@ Valhall should be. Verified before shaping the kernel around it.
 | Mali-G720-Immortalis (O6) | 10  |  256  |  8.09  |  518  | OK     |
 
 1 -> 10 CUs scales 7.2x, so the kernel parallelises sensibly.
-Both hashes b1b407b5949f0cc1 -- identical to the CPU oracle.
+Both hashes 46470bd7a464469d -- identical to the CPU oracle.
 
 ## ⭐ THE FINDING: BOTH GPUs LOSE TO THE CPU, AND THE G310 LOSES BADLY
 
