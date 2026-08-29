@@ -17,6 +17,7 @@ from matplotlib.patches import Patch
 # board was under another session's lease, so those are left blank rather than
 # guessed -- an empty field beats a plausible number.
 DATA = [
+    ("NVIDIA RTX 5090 GPU",     "GPU",   3.55, 37383),
     ("NVIDIA Thor GPU",         "GPU",  13.19, 10062),
     ("NVIDIA Orin AGX GPU",     "GPU",  23.28,  5700),
     ("Cortex-A720 x8 @2.2-2.5GHz","CPU", 51.70,  2569),
@@ -29,7 +30,6 @@ DATA = [
     ("Cortex-A55 x1 @1.8GHz",   "CPU",1588.74,    84),
     ("Mali-G310 (1 CU)",        "GPU",1846.00,    72),
     ("scalar reference (1 core)","REF",9188.00,  14.4),
-    ("NVIDIA RTX 5090 GPU",     "GPU",  None,   None),
 ]
 COL = {"GPU": "#4C8BF5", "CPU": "#E8710A", "DSP": "#12B5A5", "REF": "#9AA0A6"}
 
@@ -42,8 +42,6 @@ fig, ax = plt.subplots(figsize=(11.5, 7.4))
 for i, (lab, cls, ms, mde) in enumerate(rows):
     if mde is None:
         ax.barh(i, 12000, color="none", edgecolor=COL[cls], hatch="///", linewidth=1.4, alpha=.75)
-        ax.text(35, i, "  NOT MEASURED — GPU held under another session's lease",
-                va="center", ha="left", fontsize=9, color="#5f6368", style="italic")
     else:
         ax.barh(i, mde, color=COL[cls])
         ax.text(mde * 1.08, i, f"{mde:,.0f}   ({ms:,.1f} ms)", va="center", fontsize=9)
@@ -51,7 +49,7 @@ for i, (lab, cls, ms, mde) in enumerate(rows):
 ax.set_yticks(list(y)); ax.set_yticklabels(labels, fontsize=10)
 ax.invert_yaxis()
 ax.set_xscale("log")
-ax.set_xlim(10, 60000)
+ax.set_xlim(10, 200000)
 ax.set_xlabel("MDE/s  —  million disparity estimations per second  (log scale)", fontsize=10)
 ax.set_title("Semi-Global Matching, 1920×1080, D=64, 4 paths, 9×7 census\n"
              "every bar bit-exact to the same golden hash b1b407b5949f0cc1",

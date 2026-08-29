@@ -510,6 +510,36 @@ CPU block alone, and rule 6 says leave the cell empty rather than estimate.
 
 ---
 
+### Is throughput just bandwidth? Measured on all three GPUs
+
+The kernel is memory-bound, so the honest cross-GPU question is whether MDE/s is
+merely a proxy for DRAM bandwidth. Ceilings measured with a streaming-copy probe
+on each part, achieved figures from the traffic model against the aggregate
+phase:
+
+| GPU | aggregate | achieved | ceiling | utilisation | MDE/s | MDE/s per GB/s |
+|---|---|---|---|---|---|---|
+| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 37,383 | 27.0 |
+| Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,061 | 40.5 |
+| Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 | 32.5 |
+
+**Largely yes.** Across a 7.9× spread in bandwidth, utilisation stays in a narrow
+42–58% band and throughput-per-unit-bandwidth varies by only 1.5×. Bandwidth
+predicts most of the ranking.
+
+⭐ **The residual is the interesting part: the 5090 is the *least* efficient of
+the three despite being the fastest.** At 1,385 GB/s the kernel can no longer
+saturate the memory system, so on that part it has stopped being purely
+bandwidth-bound — the same transition qualcomm observed in reverse on the
+Hexagon, which is latency-bound at 6.8 of 28 GB/s. Which wall you hit is a
+property of the machine, and these three GPUs sit at different points on it.
+
+⚠️ **This was a gap until asked about.** Bandwidth had been measured on exactly
+one board (Thor) and used to justify a claim about all of them. The ceilings for
+Orin and the 5090 did not exist until someone asked whether they had been
+recorded. A memory-bound conclusion resting on one machine's memory measurement
+is thinner than it looked.
+
 ## 🔍 Adversarial review of these results
 
 Written by attacking the results rather than restating them. Five findings, in

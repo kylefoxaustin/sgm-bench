@@ -49,6 +49,7 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 
 | target | class | threads | ms | **MDE/s** | per-core |
 |---|---|---|---|---|---|
+| **NVIDIA RTX 5090 GPU** (Blackwell, 170 SM, CUDA) | GPU | — | 3.6 | **37,383** | — |
 | **NVIDIA Thor GPU** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | — |
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
 | 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
@@ -61,10 +62,29 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | 84 |
 | Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | — |
 | scalar reference, 1× A55 | floor | 1 | 9188.0 | 14.4 | — |
-| *NVIDIA RTX 5090 GPU* | GPU | — | *not measured* | *—* | — |
 
 Thor's peak across the D sweep is **12,138 MDE/s at D=128**; it falls back to
-9,409 at D=256, where S traffic (1.06 GB) overtakes the amortisation gain.
+9,409 at D=256, where S traffic (1.06 GB) overtakes the amortisation gain. **The
+5090 shows no such reversal** — 37,383 / 64,880 / 74,957 MDE/s at D=64/128/256 —
+which is what the mechanism predicts on a part with 5.6× the bandwidth.
+
+### Is it just bandwidth?
+
+Since the kernel is memory-bound, the honest cross-GPU question is whether
+throughput is simply a proxy for DRAM bandwidth. Ceilings measured with a
+streaming-copy probe on each part:
+
+| GPU | aggregate | achieved | ceiling | utilisation | MDE/s |
+|---|---|---|---|---|---|
+| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 37,383 |
+| Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,061 |
+| Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 |
+
+**Largely yes, and the residual is the interesting part.** All three land in a
+narrow 42–58% utilisation band, and MDE/s per GB/s of ceiling is 27 / 40 / 33 —
+within 1.5× across a 7.9× spread in bandwidth. The 5090 is the *least* efficient
+of the three despite being fastest, which says it is no longer purely
+bandwidth-bound at that speed.
 
 **MDE/s** = million disparity estimations/sec = `W × H × D / runtime`. It is the
 unit the literature uses because fps hides D — two implementations can both
