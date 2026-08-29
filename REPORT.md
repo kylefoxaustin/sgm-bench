@@ -697,6 +697,30 @@ Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**
 — higher than the mismatched scene reported, because D=128 is now actually being
 exercised.
 
+### The accuracy figures were reproduced independently
+
+Before the scene was corrected, the qualcomm session ran their HVX kernel on it
+and **scored it themselves against `gt_float.npy` rather than citing ours**:
+
+| | ours | theirs, independently derived |
+|---|---|---|
+| bad > 1px | 13.9% | **13.95%** |
+| bad > 2px | 10.2% | **10.24%** |
+| MAE | 2.49 | **2.49** |
+
+557,252 pixels scored, leftmost 128 columns excluded. Their kernel also
+reproduced the golden byte-for-byte — 0 differing pixels of 658,008 — making the
+Hexagon a **sixth target** on that scene at 86.13 ms.
+
+⭐ **This is the first accuracy number in the project to come from real
+calibrated capture, and it was confirmed by a different implementation on
+silicon we have never touched.** They declined to send their disparity map on
+the grounds that a matching hash means it *is* our map — the pixels only carry
+information the hash cannot when a hash disagrees.
+
+⚠️ Those figures stand as accuracy; the run predates the scene correction above,
+so it is not comparable to the 1482×1000 timings and is not in the main table.
+
 ⭐ **The general form, and it is the qualcomm session's: discrimination is a
 property of the (SCENE, D) PAIR** — not of the scene, the generator, or the
 algorithm. Neither "we use real imagery now" nor "we fixed the generator"
