@@ -29,7 +29,7 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
 | 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
 | 8× Cortex-A78C (IQ-9075) | CPU | 6 | 94.7 | 1,402 | 402 |
-| **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 136.8 | **970** | — |
+| **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 136.9 | **969** | — |
 | Mali-G720, 10 CU | GPU | — | 256.0 | 518 | — |
 | 1× Cortex-A720 @2.5 GHz | CPU | 1 | 313.6 | 423 | 423 |
 | 1× Cortex-A78C | CPU | 1 | 332.2 | 400 | 400 |

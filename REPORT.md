@@ -111,7 +111,7 @@ paying the DDR round trip that dominates every implementation measured here.
 | **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA, tuned) ¶ | D=64 | — | 23.3 | 42.95 | 89.06 | **5,700** | — |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
-| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 136.8 | 7.31 | 15.15 | **970** | — |
+| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 136.9 | 7.30 | 15.14 | **969** | — |
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
 | scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
@@ -264,6 +264,41 @@ law predicts: the amortisation benefit saturates as 1/DPT while **S traffic grow
 linearly with D** (1.06 GB at D=256), so past some D the traffic term wins.
 **Which wall you hit is a property of the machine, not the algorithm** — Thor is
 memory-bound at 145 of 249 GB/s, the Hexagon is still latency-bound at 6.8 of 28.
+
+### A prediction that was made before the data, and held
+
+When the corrected grid weakened our resolution finding to 8.8% against the
+qualcomm session's 34%, the obvious question was why the same workload behaves so
+differently. The prediction offered to them, before either of us had data to
+settle it:
+
+> **The size of the resolution penalty should track how latency-bound the part
+> is.** Their NSP is latency-bound at 6.8 of 28 GB/s, so per-frame fixed costs
+> dominate and shrinking the frame hurts a lot. Thor is memory-bound at 145 of
+> 249, where the same fixed cost is a small share of a much larger bill.
+
+They tested it on a handle we had not considered — **not across machines, but
+within one**. At D=64 the 128-byte HVX vector is half empty, so the
+configuration is more latency-exposed per unit of useful work; at D=128 it is
+full. Same silicon, same scenes, same session, hashes checked, n=20:
+
+| configuration | 1080p → VGA | penalty |
+|---|---|---|
+| Hexagon, D=64 (half-empty vector) | 969 → 666 MDE/s | **31.3%** |
+| Hexagon, D=128 (full vector) | 1104 → 838 MDE/s | **24.1%** |
+| Thor CUDA, D=64 (memory-bound) | 10,077 → 9,187 | **8.8%** |
+
+**Monotonic in how latency-bound the configuration is**, and the direction was
+specified in advance rather than fitted afterwards.
+
+⚠️ **Supporting, not proving — their words, and they are right.** Two of the
+three points are the same chip; the third differs in vendor, ISA and memory
+system simultaneously. A three-point sequence with one independent axis is
+evidence, not a law.
+
+⭐ **This only became visible because the two measurements disagreed.** Had both
+parts shown a 30% penalty we would have called it reproduction and learned
+nothing about the mechanism. The disagreement carried the physics.
 
 ### A shared scene, because a D-sweep can fail to discriminate
 
