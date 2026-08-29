@@ -656,6 +656,52 @@ Orin and the 5090 did not exist until someone asked whether they had been
 recorded. A memory-bound conclusion resting on one machine's memory measurement
 is thinner than it looked.
 
+## 🔴 Real imagery does not by itself retire the discrimination check
+
+The first Middlebury scene here was **not a valid correctness gate**, and
+`check_golden_discriminates.py` passed it. Found by the qualcomm session, who
+turned the check into a script and swept every (scene, D) pair either corpus
+cites.
+
+At 1/3 scale the Motorcycle pair's true disparities stop at **79.9** while the
+test ran at **D=128**. The golden reached 127 — 126 distinct values, apparently
+healthy — but only **58 pixels (0.0088%)** sat in the top decile, and all 906
+pixels above the true maximum were the implementation's own **errors**.
+
+⚠️ **And the failure mode gets worse as the implementation gets better.** If a
+golden only reaches the top of its range through high-disparity mistakes, a
+*more accurate* implementation makes fewer of them and becomes **harder** to
+distinguish from a truncated one. A test whose power decays as the thing it
+tests improves is worse than no test.
+
+**Two fixes, because there were two faults:**
+
+- **The checker** now returns BLIND / THIN / OK rather than pass/fail. Where
+  `gt_float.npy` sits beside a golden it separates *true* high-disparity pixels
+  from the implementation's errors, and fails a golden whose top of range is
+  reached only by the latter. Top-decile coverage threshold 0.5%.
+- **The scene was mismatched to D**, which was the root cause. Regenerated at
+  1/2 scale — 1482×1000, true disparity max 119.8 against D=128 — giving
+  **1.93% top-decile coverage of which 22,530 pixels are genuinely high**,
+  not 58 errors.
+
+| target | ms | spread | golden `e8a95242882013f0` |
+|---|---|---|---|
+| RTX 5090 | 3.32 | 1.16 | ✓ |
+| Thor | 15.94 | 1.02 | ✓ |
+| Orin AGX | 23.91 | 1.02 | ✓ |
+| 8× A720 | 112.44 | 1.07 | ✓ |
+| 6× A55 | 590.50 | 1.00 | ✓ |
+
+Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**
+— higher than the mismatched scene reported, because D=128 is now actually being
+exercised.
+
+⭐ **The general form, and it is the qualcomm session's: discrimination is a
+property of the (SCENE, D) PAIR** — not of the scene, the generator, or the
+algorithm. Neither "we use real imagery now" nor "we fixed the generator"
+retires the check. It has to run per pair, which is why it has an exit code.
+
 ## Real imagery, and the last unverified rows
 
 ⭐ **Every published row is now verified against a golden that discriminates.**
