@@ -60,6 +60,33 @@ configuration, and the wrong unit for choosing a configuration. The binding
 constraint on a real system turns out to be the **camera baseline**, not the
 kernel.
 
+### Two configuration traps
+
+MEASURED by the qualcomm session on the Hexagon NSP; their arithmetic
+re-checked here for internal consistency before being reproduced.
+
+🚨 **D pads to the next power of two, so D=96 and D=240 should never be built.**
+D=240 measured 442.62 ms against D=256's 443.04 ms — 0.09% apart, identical
+memory, **16 disparities available for free**. A configuration that silently
+charges full price for a partial range is the same shape as everything else this
+project found today: correct output, no complaint, quietly worse. Their build
+`#error`s above D=256 rather than producing a silently wrong map, which is the
+right instinct — a compile-time refusal beats a plausible answer.
+
+⚠️ **Efficiency falls as resolution falls.** 1080p 962 → 720p 756 → 540p 704 →
+VGA 631 MDE/s. Dropping resolution buys **latency, not throughput per
+disparity**, because fixed overheads amortise over fewer pixels: 1080p→720p is
+1.77× wall-clock against a 2.25× pixel reduction. Combined with the geometry
+above, a lower-resolution system is doing less total work but each disparity
+costs more.
+
+And one engine that could not be tested at all: the **EVA/CVP** vision
+accelerator is present in silicon with 7 MB reserved at boot, but the Yocto
+image ships **no firmware and no driver**, so it cannot be started. Recorded as
+untestable rather than absent — it is the one engine where a fixed-function
+design would be expected to win, by keeping the cost volume on-chip and never
+paying the DDR round trip that dominates every implementation measured here.
+
 | platform | config | threads | ms | fps | Mpix/s | **MDE/s** | best per-core |
 |---|---|---|---|---|---|---|---|
 | **8× Cortex-A720** @2.2–2.5 GHz (Radxa O6) | D=64 | 8 | 51.7 | 19.4 | 40.14 | **2,569** | 423 |
