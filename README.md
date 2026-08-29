@@ -49,15 +49,22 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 
 | target | class | threads | ms | **MDE/s** | per-core |
 |---|---|---|---|---|---|
-| **NVIDIA Thor** (Blackwell, CUDA) | GPU | — | 35.4 | **3,750** | — |
-| 8× Cortex-A720 (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
-| **NVIDIA Jetson AGX Orin** (Ampere, CUDA) | GPU | — | 72.3 | **1,836** | — |
+| **NVIDIA Thor** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | — |
+| **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
+| 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
 | 8× Cortex-A78C (IQ-9075) | CPU | 6 | 94.7 | 1,402 | 402 |
-| 6× Cortex-A55 (i.MX 95) | CPU | 6 | 341.3 | 389 | 82 |
-| Mali-G720, 10 CU | GPU | — | 256 | 518 | — |
-| **Hexagon v73 NSP** | DSP | 4 | 138.6 | **957** | — |
-| Mali-G310, 1 CU | GPU | — | 1846 | 72 | — |
-| scalar reference, 1× A55 | floor | 1 | 9188 | 14.4 | — |
+| **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 138.6 | **957** | — |
+| Mali-G720, 10 CU | GPU | — | 256.0 | 518 | — |
+| 1× Cortex-A720 @2.5 GHz | CPU | 1 | 313.6 | 423 | 423 |
+| 1× Cortex-A78C | CPU | 1 | 332.2 | 400 | 400 |
+| 6× Cortex-A55 @1.8 GHz (i.MX 95) | CPU | 6 | 341.3 | 389 | 84 |
+| 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | 84 |
+| Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | — |
+| scalar reference, 1× A55 | floor | 1 | 9188.0 | 14.4 | — |
+| *NVIDIA RTX 5090* | GPU | — | *not measured* | *—* | — |
+
+Thor's peak across the D sweep is **12,138 MDE/s at D=128**; it falls back to
+9,409 at D=256, where S traffic (1.06 GB) overtakes the amortisation gain.
 
 **MDE/s** = million disparity estimations/sec = `W × H × D / runtime`. It is the
 unit the literature uses because fps hides D — two implementations can both
