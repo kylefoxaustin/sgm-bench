@@ -308,9 +308,14 @@ static int cuda_run(const uint8_t *left, const uint8_t *right, int W, int H,
     if (!ready || W != initW || H != initH) { if (setup(W, H)) return -1; }
     const size_t N = (size_t)W * H;
 
-    double t0 = now_ms();
+    /* Transfers are timed SEPARATELY. They used to sit inside census_ms and
+     * argmin_ms, which meant every per-phase figure derived from those was
+     * really phase-plus-copy. */
+    double tA = now_ms();
     CK(cudaMemcpy(d_l, left,  N, cudaMemcpyHostToDevice));
     CK(cudaMemcpy(d_r, right, N, cudaMemcpyHostToDevice));
+    CK(cudaDeviceSynchronize());
+    double t0 = now_ms();
     /* no memset: path 0 STORES into S rather than accumulating into zeros */
 
     dim3 cb(32, 8), cg((W + 31) / 32, (H + 7) / 8);
@@ -332,12 +337,15 @@ static int cuda_run(const uint8_t *left, const uint8_t *right, int W, int H,
     double t2 = now_ms();
 
     ko_argmin<<<(unsigned)((N + WPB - 1) / WPB), wb>>>(d_S, d_disp, W, H);
-    CK(cudaMemcpy(disp, d_disp, N, cudaMemcpyDeviceToHost));
     CK(cudaDeviceSynchronize());
     double t3 = now_ms();
+    CK(cudaMemcpy(disp, d_disp, N, cudaMemcpyDeviceToHost));
+    CK(cudaDeviceSynchronize());
+    double tB = now_ms();
 
     if (t) { t->census_ms = t1 - t0; t->cost_ms = -1;
-             t->aggregate_ms = t2 - t1; t->argmin_ms = t3 - t2; }
+             t->aggregate_ms = t2 - t1; t->argmin_ms = t3 - t2;
+             t->transfer_ms = (t0 - tA) + (tB - t3); t->threads_used = 0; }
     return 0;
 }
 

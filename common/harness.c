@@ -28,6 +28,7 @@
 #include <string.h>
 #include <time.h>
 #include <sched.h>
+#include <math.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -87,6 +88,7 @@ int main(int argc, char **argv) {
     if (argc < 3) { fprintf(stderr, "usage: %s LEFT.pgm RIGHT.pgm [-o out.pgm] [-g golden.pgm] [-t threads] [-w warm] [-n timed] [-j results.json] [--board name]\n", argv[0]); return 1; }
     const char *lpath = argv[1], *rpath = argv[2], *opath = NULL, *gpath = NULL, *jpath = NULL, *board = "unknown";
     int threads = 0, warm = 10, timed = 100, roofline = 1, rl_cal_write = 0;
+    double max_spread = 1.25;
     double rl_max = SGM_ROOFLINE_DEFAULT_MAX;
     const char *rl_cal = "data/golden/roofline.cal";
     for (int i = 3; i < argc; i++) {
@@ -101,6 +103,7 @@ int main(int argc, char **argv) {
         else if (!strcmp(argv[i], "--roofline-max") && i + 1 < argc) rl_max = atof(argv[++i]);
         else if (!strcmp(argv[i], "--roofline-cal") && i + 1 < argc) rl_cal = argv[++i];
         else if (!strcmp(argv[i], "--roofline-calibrate")) rl_cal_write = 1;
+        else if (!strcmp(argv[i], "--max-spread") && i + 1 < argc) max_spread = atof(argv[++i]);
         else { fprintf(stderr, "unknown arg %s\n", argv[i]); return 1; }
     }
 
@@ -143,7 +146,7 @@ int main(int argc, char **argv) {
     uint8_t *disp = calloc((size_t)W * H, 1);
     if (!disp) return 1;
 
-    sgm_stage_times st = { -1, -1, -1, -1 };
+    sgm_stage_times st = { -1, -1, -1, -1, -1, 0 };
     for (int i = 0; i < warm; i++)
         if (SGM_IMPL.run(L, R, W, H, disp, threads, &st)) { fprintf(stderr, "impl failed\n"); return 1; }
 
@@ -157,6 +160,15 @@ int main(int argc, char **argv) {
 
     qsort(ms, timed, sizeof(double), cmp_double);
     double med = ms[timed / 2], p95 = ms[(int)(timed * 0.95) < timed ? (int)(timed * 0.95) : timed - 1], mn = ms[0];
+    /* DISPERSION. A median with no spread beside it is how an 80%-wrong cell
+     * survived publication here: it read p95/median 1.55 and min/median 0.65 on
+     * 12 samples and looked like a number. Both ratios are now computed, and a
+     * run whose spread exceeds --max-spread is flagged as unstable rather than
+     * quietly reported. */
+    double sd = 0; for (int i = 0; i < timed; i++) { double d = ms[i] - med; sd += d * d; }
+    sd = timed > 1 ? sqrt(sd / (timed - 1)) : 0;
+    double spread_hi = med > 0 ? p95 / med : 0, spread_lo = med > 0 ? mn / med : 0;
+    int unstable = (spread_hi > max_spread);
     double fps = 1000.0 / med, mpix = (double)W * H / 1e6 * fps;
 
     uint64_t hash = fnv1a64(disp, (size_t)W * H);
@@ -176,8 +188,10 @@ int main(int argc, char **argv) {
     }
     if (opath && pgm_write(opath, disp, W, H)) return 1;
 
-    printf("%-12s %dx%d D=%d paths=%d th=%d  median %8.2f ms  p95 %8.2f  min %8.2f  fps %7.2f  Mpix/s %7.2f  hash %016llx%s\n",
-           SGM_IMPL.name, W, H, SGM_D, SGM_PATHS, threads_actual, med, p95, mn, fps, mpix,
+    printf("%-12s %dx%d D=%d paths=%d th=%d  median %8.2f ms  p95 %8.2f  min %8.2f  sd %6.3f  spread %.2f/%.2f%s  fps %7.2f  Mpix/s %7.2f  hash %016llx%s\n",
+           SGM_IMPL.name, W, H, SGM_D, SGM_PATHS,
+           st.threads_used > 0 ? st.threads_used : threads_actual,
+           med, p95, mn, sd, spread_hi, spread_lo, unstable ? " UNSTABLE" : "", fps, mpix,
            (unsigned long long)hash, golden_match == 1 ? "  GOLDEN OK" : golden_match == 0 ? "  GOLDEN FAIL" : "");
 
     /* The COST gate. Runs by default and in the same invocation as the timing,
@@ -196,11 +210,14 @@ int main(int argc, char **argv) {
         time_t now = time(NULL); char ts[64]; strftime(ts, sizeof ts, "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
         fprintf(f, "{\"impl\":\"%s\",\"board\":\"%s\",\"W\":%d,\"H\":%d,\"D\":%d,\"paths\":%d,\"census\":\"%dx%d\",\"P1\":%d,\"P2\":%d,"
                    "\"threads\":%d,\"threads_requested\":%d,\"cpu_mask\":\"%s\",\"warm\":%d,\"timed\":%d,"
-                   "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"fps\":%.3f,\"mpix_s\":%.3f,"
+                   "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"sd_ms\":%.4f,"
+                   "\"spread_hi\":%.3f,\"spread_lo\":%.3f,\"unstable\":%d,"
+                   "\"transfer_ms\":%.3f,\"threads_used\":%d,\"fps\":%.3f,\"mpix_s\":%.3f,"
                    "\"census_ms\":%.3f,\"cost_ms\":%.3f,\"aggregate_ms\":%.3f,\"argmin_ms\":%.3f,"
                    "\"hash\":\"%016llx\",\"golden_match\":%d,\"roofline_ok\":%d,\"cflags\":\"%s\",\"git\":\"%s\",\"ts\":\"%s\"}\n",
                 SGM_IMPL.name, board, W, H, SGM_D, SGM_PATHS, SGM_CENSUS_W, SGM_CENSUS_H, SGM_P1, SGM_P2,
-                threads_actual, threads, mask, warm, timed, med, p95, mn, fps, mpix,
+                threads_actual, threads, mask, warm, timed, med, p95, mn, sd,
+                spread_hi, spread_lo, unstable, st.transfer_ms, st.threads_used, fps, mpix,
                 st.census_ms, st.cost_ms, st.aggregate_ms, st.argmin_ms,
                 (unsigned long long)hash, golden_match, rl_armed ? !rl_fail : -1, CFLAGS_STR, GIT_SHA, ts);
         fclose(f);

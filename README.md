@@ -98,6 +98,21 @@ trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ---
 
+## Measurement quality
+
+Every figure here is a median with its spread stated. Dedicated boards measure
+at **p95/median 1.00–1.04**; the RTX 5090, the only shared machine, runs
+**1.11–1.29** because its clocks are unlocked and a remote-desktop process
+co-resides on the card. Longer warm-ups do not help; between-run medians are
+reproducible to 2–7%, so its numbers are sound but carry real uncertainty.
+
+No dispersion figure appeared anywhere in this project until 2026-08-29 — which
+is precisely how a grid cell that was 80% wrong reached publication carrying a
+p95/median of 1.55. `REPORT.md` has the full table, plus two other instrument
+defects fixed at the same time: host↔device transfer had been folded into the
+census and argmin phase timings, and the thread count was a *requested* value
+echoed back rather than the team size observed inside the parallel region.
+
 ## Why SGM is hard
 
 Stereo matching is easy to state and awkward to make fast. For every pixel you

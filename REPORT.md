@@ -610,6 +610,63 @@ Orin and the 5090 did not exist until someone asked whether they had been
 recorded. A memory-bound conclusion resting on one machine's memory measurement
 is thinner than it looked.
 
+## Measurement quality: dispersion, transfers, and observed thread counts
+
+Three instrument defects were fixed after review. All targets were then
+re-measured against the corrected goldens.
+
+### Every target, re-verified with its spread
+
+| target | ms | p95/median | min/median | golden |
+|---|---|---|---|---|
+| 6× Cortex-A55 | 345.55 | 1.01 | 0.99 | `46470bd7…` ✓ |
+| 1× Cortex-A55 | 1595.95 | 1.00 | 1.00 | ✓ |
+| 8× Cortex-A720 | 50.80 | 1.01 | 1.00 | ✓ |
+| 1× Cortex-A720 | 316.34 | 1.00 | 1.00 | ✓ |
+| Thor D=64 | 13.16 | 1.04 | 0.99 | `4518557a…` ✓ |
+| Thor D=128 | 21.56 | 1.04 | 0.99 | `3d99f1c7…` ✓ |
+| Orin D=64 | 23.90 | 1.01 | 0.97 | ✓ |
+| Orin D=128 | 33.41 | 1.01 | 0.98 | ✓ |
+| **RTX 5090 D=64** | 3.43 | **1.12–1.29** | 0.92 | ✓ |
+| RTX 5090 D=128 | 4.23 | 1.19 | 0.92 | ✓ |
+| RTX 5090 D=256 | 6.91 | 1.11 | 0.92 | ✓ |
+
+🚨 **The 5090 is the only unstable platform, and it is the only shared one.**
+Its clocks are unlocked (2610 of 3105 MHz, no permission to lock without root)
+and a `rustdesk` process co-resides on the card. A longer warm-up does not help:
+spread holds at ~1.12 whether warming 10, 100 or 300 frames. Between-run medians
+*are* reproducible — D=64 spans 3.26–3.48 over five runs, D=256 only 6.88–6.91 —
+so the figures are sound but carry more uncertainty than any dedicated board.
+Every dedicated board sits at 1.00–1.04.
+
+**The harness now computes p95/median and min/median on every run and prints
+`UNSTABLE` past a threshold.** No dispersion figure appeared anywhere in this
+project until 2026-08-29, which is exactly how a cell that was 80% wrong reached
+publication carrying p95/median 1.55.
+
+### Host↔device transfer was folded into the phase timings
+
+`census_ms` included both H2D copies and `argmin_ms` included the D2H copy, so
+every per-phase claim derived from them was phase-plus-copy. Now separated:
+
+| | transfer | share of total |
+|---|---|---|
+| Thor D=64 | 0.126 ms | 1.0% |
+| Orin D=64 | 1.564 ms | **6.5%** |
+
+⚠️ **This corrects a published figure.** "Orin's argmin is 3.9× less efficient
+than census" was computed with transfers inside both. Excluding them the ratio is
+**4.59×** — census shed two H2D copies while argmin shed only one D2H, so the
+published number *understated* the imbalance.
+
+### The `-t` fix reported a request, not an observation
+
+The earlier fix reported `omp_get_max_threads()`, which echoes the requested
+count back through the runtime rather than observing the team that ran — the same
+failure shape as the inert flag it replaced. Implementations now report
+`omp_get_num_threads()` from **inside** the parallel region, and that observed
+count is what reaches the table and the JSON.
+
 ## 🔴 The acceptance model was broken, and an independent review found it
 
 **Until 2026-08-29 the primary golden could not discriminate the top third of the

@@ -8,7 +8,8 @@ it changes the D a given minimum range REQUIRES:
 
 So required D scales with image WIDTH and inversely with FOV, and since work is
 W*H*D with D itself proportional to W, SGM work goes as W^2*H -- CUBIC in linear
-resolution, not quadratic. Halving resolution at fixed optics is ~3.4x less work.
+resolution, not quadratic. 1080p -> 720p (a 1.5x linear drop) is ~3.4x less work, not the 2.25x the
+pixel count suggests. Actually halving the linear resolution would be ~8x.
 
 The useful consequence, which a throughput number hides completely: a WIDER
 field of view is CHEAPER. Going 90 -> 120 degrees cuts focal length 1.73x, cuts

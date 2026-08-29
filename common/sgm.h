@@ -11,6 +11,17 @@ typedef struct {
     double cost_ms;       /* -1 if cost is fused into aggregation */
     double aggregate_ms;
     double argmin_ms;     /* -1 if fused */
+    /* Host<->device transfer, kept SEPARATE from the phases it used to be
+     * folded into. census_ms once included both H2D copies and argmin_ms
+     * included the D2H copy, which polluted every per-phase claim made from
+     * them -- "census is 8% of total" was really census-plus-upload. -1 when
+     * the implementation has no transfer (CPU targets). */
+    double transfer_ms;
+    /* The thread count OBSERVED inside a parallel region, not the one
+     * requested. omp_get_max_threads() echoes the request back through the
+     * runtime; only omp_get_num_threads() from inside the team reports what
+     * actually ran. 0 when not applicable. */
+    int    threads_used;
 } sgm_stage_times;
 
 /* Run one frame. left/right are W*H uint8 rectified grey. disp is W*H uint8
