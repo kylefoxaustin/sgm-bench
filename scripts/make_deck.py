@@ -10,23 +10,23 @@ from pptx.enum.text import PP_ALIGN
 W, H, D, PATHS = 1920, 1080, 64, 4
 INK   = RGBColor(0x20, 0x21, 0x24)
 MUTED = RGBColor(0x5F, 0x63, 0x68)
-ACC   = {"GPU": RGBColor(0x4C,0x8B,0xF5), "CPU": RGBColor(0xE8,0x71,0x0A),
+ACC   = {"HW": RGBColor(0x7B,0x4F,0xD1), "GPU": RGBColor(0x4C,0x8B,0xF5), "CPU": RGBColor(0xE8,0x71,0x0A),
          "DSP": RGBColor(0x12,0xB5,0xA5), "REF": RGBColor(0x9A,0xA0,0xA6)}
 
 # label, class, ms, silicon, notes[]
 UNITS = [
- ("NVIDIA Thor",       "GPU",  13.19, "Blackwell, 20 SM, CUDA 13.2, sm_110", [
+ ("NVIDIA Thor GPU",   "GPU",  13.19, "Blackwell, 20 SM, CUDA 13.2, sm_110", [
    "Rewritten warp-centric: one warp owns a scanline's whole disparity range,",
    "L in registers, min-reduce by __shfl_xor, ZERO barriers in the recurrence.",
    "2.69x over the naive OpenCL transliteration (35.39 -> 13.19 ms).",
    "MEMORY BOUND: aggregate moves 1.46 GB in 10.04 ms = 145 GB/s,",
    "against a 247 GB/s copy ceiling measured on this same part.",
    "Peak across the D sweep is 12,138 MDE/s at D=128; D=256 falls back to 9,409."]),
- ("NVIDIA Orin AGX",   "GPU",  23.28, "Ampere, 16 SM, CUDA 12.6, sm_87", [
+ ("NVIDIA Orin AGX GPU","GPU",  23.28, "Ampere, 16 SM, CUDA 12.6, sm_87", [
    "Same kernel, same changes: 3.10x over the naive port (72.27 -> 23.28 ms).",
    "Bit-exact on the first run, before any tuning — the payoff for porting a",
    "verified OpenCL kernel one-for-one instead of writing a new one."]),
- ("NVIDIA RTX 5090",   "GPU",  None,  "Blackwell, discrete, 32 GB", [
+ ("NVIDIA RTX 5090 GPU","GPU",  None,  "Blackwell, discrete, 32 GB", [
    "NOT MEASURED. The GPU has been under another session's hard lease.",
    "The code is ready; it is one build and one run when the lease clears.",
    "Shown here rather than omitted, because a missing row reads as",
@@ -54,6 +54,24 @@ UNITS = [
    "on the hardware: the kernel carries ONE dependency chain per work-item",
    "with three barrier sites per step and never interleaves chains.",
    "Nobody has done for this part what was done for the DSP."]),
+ ("NVIDIA Thor OFA",   "HW",   9.345, "Fixed-function SGM engine (Optical Flow Accelerator), VPI 4.1.4  |  1080p D=128, downscaleFactor=1", [
+   "DEDICATED STEREO HARDWARE, and it beats our tuned CUDA on the same chip",
+   "by 2.34x (9.35 ms vs 21.86 ms at 1920x1080 D=128).",
+   "NOT bit-exact to our golden: VPI's SGM is a different implementation with",
+   "its own census, penalties and confidence output. This is a throughput",
+   "comparison at matched resolution and disparity range, not the same test.",
+   "OFA accepts maxDisparity of 128 or 256 ONLY.",
+   "⚠️ It defaults to downscaleFactor=2, which emits a 960x540 map from 1080p",
+   "input in 4.14 ms. Quoting that as a 1080p figure overstates it by 2.3x."]),
+ ("NVIDIA Orin AGX OFA","HW",  72.637, "Fixed-function SGM engine, VPI 3.2.4  |  1080p D=128, downscaleFactor=1", [
+   "The same fixed-function engine one generation earlier, and here it LOSES:",
+   "our CUDA kernel does the same work in 33.16 ms against the hardware's 72.64.",
+   "Software wins by 2.19x on the silicon built for this exact job.",
+   "Thor's OFA is 7.8x faster than Orin's at identical settings -- a far larger",
+   "generational jump than the 1.5x between the two GPUs.",
+   "Taken together these two rows are the interesting result: whether dedicated",
+   "hardware beats a tuned kernel is a property of the generation, not of the",
+   "idea of dedicated hardware."]),
  ("Cortex-A55 x6",     "CPU", 341.30, "i.MX 95 FRDM, 1.8 GHz, NEON  |  single core: 1,588.74 ms = 84 MDE/s", [
    "The reference platform this project is anchored to, and the slowest CPU here.",
    "Scales 4.65x from 1 to 6 cores (1,588.74 -> 341.30 ms) -- that spread is also",

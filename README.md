@@ -49,8 +49,8 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 
 | target | class | threads | ms | **MDE/s** | per-core |
 |---|---|---|---|---|---|
-| **NVIDIA Thor** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | — |
-| **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
+| **NVIDIA Thor GPU** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | — |
+| **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
 | 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
 | 8× Cortex-A78C (IQ-9075) | CPU | 6 | 94.7 | 1,402 | 402 |
 | **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 138.6 | **957** | — |
@@ -61,7 +61,7 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | 84 |
 | Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | — |
 | scalar reference, 1× A55 | floor | 1 | 9188.0 | 14.4 | — |
-| *NVIDIA RTX 5090* | GPU | — | *not measured* | *—* | — |
+| *NVIDIA RTX 5090 GPU* | GPU | — | *not measured* | *—* | — |
 
 Thor's peak across the D sweep is **12,138 MDE/s at D=128**; it falls back to
 9,409 at D=256, where S traffic (1.06 GB) overtakes the amortisation gain.
@@ -159,6 +159,38 @@ Three properties fall out, and they shape every implementation here:
 Every bar is bit-exact to the same golden hash. The scalar reference at the
 bottom is the floor the whole exercise is measured against — the fastest bar is
 **700× faster than it, computing byte-identical output**.
+
+## There is dedicated stereo hardware on these parts, and we measured it
+
+Both Jetsons carry an **OFA — Optical Flow Accelerator** — whose VPI header
+documents a *"semi-global matching (SGM) computation"* with optional diagonal
+paths. It is a fixed-function stereo engine, exposed as
+`VPI_BACKEND_OFA`, and it only accepts `maxDisparity` of **128 or 256**.
+
+![hardware SGM vs our software](docs/hardware-vs-software.png)
+
+| board | our CUDA (bit-exact) | OFA hardware engine | |
+|---|---|---|---|
+| **Thor** | 21.86 ms · 12,142 MDE/s | **9.35 ms · 28,402 MDE/s** | hardware wins **2.34×** |
+| **Orin AGX** | **33.16 ms · 8,005 MDE/s** | 72.64 ms · 3,654 MDE/s | software wins **2.19×** |
+
+⭐ **The dedicated engine wins on one part and loses on the other.** Thor's OFA
+is 7.8× faster than Orin's at the same settings — a generational jump in the
+fixed-function block that is far larger than the 1.5× between the two GPUs. On
+Orin, a hand-written CUDA kernel beats the silicon built for this exact job.
+
+⚠️ **These rows are NOT bit-exact to our golden and are not gated by it.** VPI's
+SGM is a different implementation — its own census, penalties, and confidence
+output — so this is a throughput comparison at matched resolution and disparity
+range, not the same test the rest of this repo runs. It is kept in a separate
+figure for that reason.
+
+⚠️ **Watch the downscale factor.** OFA defaults to `downscaleFactor=2`, which
+emits a **960×540** disparity map from a 1920×1080 input and runs in 4.14 ms on
+Thor. Quoting that as a 1080p result would overstate it by 2.3×. Every number
+above is `downscaleFactor=1`, full-resolution output. This is the same
+convention trap that made a vendor's quoted figure unusable earlier in this
+project, met again in different silicon.
 
 ## The second gate: a predicted cost
 
