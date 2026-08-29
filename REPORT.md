@@ -698,6 +698,23 @@ re-measured against the corrected goldens.
 | RTX 5090 D=128 | 4.23 | 1.19 | 0.92 | ✓ |
 | RTX 5090 D=256 | 6.91 | 1.11 | 0.92 | ✓ |
 
+🔴 **Locking the clock was tried and made it worse — the drift hypothesis is
+falsified.** The obvious explanation for the 5090's spread was boost-clock drift,
+so the SM clock was locked at 2595 MHz and held perfectly: 24 of 24 samples taken
+*during* a run read exactly 2595, with no power-cap or slowdown events. The
+spread did not improve:
+
+| D=256, same protocol | median | within-run spread | between-run |
+|---|---|---|---|
+| unlocked | **6.88–6.91 ms** | 1.11 | ±0.4% |
+| locked at 2595 MHz | 7.14–7.22 ms | 1.16 | ±0.6% |
+
+Locking cost **4.3% performance** — 2595 caps a boost the card genuinely reaches
+under load — and left the spread slightly *worse*, reproducibly over five runs.
+**So the variance is not clock drift**: it survives a rock-steady clock. What
+remains is kernel-launch jitter and the co-resident process. The lock was
+reverted; the unlocked figures are the ones published.
+
 🚨 **The 5090 is the only unstable platform, and it is the only shared one.**
 Its clocks are unlocked (2610 of 3105 MHz, no permission to lock without root)
 and a `rustdesk` process co-resides on the card. A longer warm-up does not help:
