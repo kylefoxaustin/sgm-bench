@@ -121,6 +121,38 @@ runs; p95 and min are also recorded.
 
 ---
 
+## Why SGM is hard
+
+Stereo matching is easy to state and awkward to make fast. For every pixel you
+score **D** candidate disparities, then smooth those scores so the depth map is
+coherent rather than speckled. The smoothing is what makes it good, and it is
+also what makes it hard:
+
+    L(p, d) = C(p, d) + min( L(p−1, d),  L(p−1, d±1) + P1,  min_k L(p−1, k) + P2 ) − min_k L(p−1, k)
+
+**Every pixel depends on the pixel before it.** That is a serial recurrence along
+each of four sweep directions, so the obvious parallelism — one thread per pixel —
+is unavailable. What is left is parallelism across disparities and across
+independent scanlines, and a cross-lane `min` over all D at *every step*.
+
+Three properties fall out, and they shape every implementation here:
+
+- **The work is large and fixed.** 1920×1080 × 64 disparities × 4 paths ≈ 530M
+  updates per frame. There is no early exit and no data-dependent shortcut.
+- **The intermediate is bigger than the image.** The aggregated cost volume is
+  265 MB per frame at 1080p — 128× the input — so a tuned implementation ends up
+  **memory-bound**, not compute-bound. Ours reaches 145 GB/s of a measured
+  247 GB/s ceiling on Thor.
+- **Wide hardware does not automatically win.** A vector unit can fill lanes but
+  cannot remove the dependency; hiding it takes independent chains and costs
+  registers. That is why the ordering below is not the ordering of raw FLOPS.
+
+![SGM throughput by processing unit](docs/results.png)
+
+Every bar is bit-exact to the same golden hash. The scalar reference at the
+bottom is the floor the whole exercise is measured against — the fastest bar is
+**700× faster than it, computing byte-identical output**.
+
 ## The second gate: a predicted cost
 
 The golden hash catches wrong answers. It is structurally blind to a kernel that
