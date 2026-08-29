@@ -18,7 +18,7 @@ ROWS = [
  ("NVIDIA Orin AGX", "OFA hardware SGM engine", 72.637, "hw"),
 ]
 C = {"hw": "#7B4FD1", "sw": "#4C8BF5"}
-fig, ax = plt.subplots(figsize=(11, 4.6))
+fig, ax = plt.subplots(figsize=(11, 5.0))
 labels = [f"{b}\n{l}" for b, l, _, _ in ROWS]
 for i, (b, l, ms, k) in enumerate(ROWS):
     mde = W*H*D/ms/1000
@@ -28,8 +28,9 @@ ax.set_yticks(range(len(ROWS))); ax.set_yticklabels(labels, fontsize=9)
 ax.invert_yaxis(); ax.set_xlim(0, 36000)
 ax.set_xlabel("MDE/s at 1920×1080, D=128", fontsize=10)
 ax.set_title("Dedicated stereo hardware vs. our software, same chip, same resolution and disparity range\n"
-             "the hardware engine wins on Thor by 2.34× and LOSES on Orin by 2.19×",
-             fontsize=11.5, pad=12)
+             "the hardware engine wins on Thor by 2.34× and LOSES on Orin by 2.19×\n"
+             "THROUGHPUT ONLY — OFA is not bit-exact to our golden and its accuracy is unmeasured",
+             fontsize=11, pad=12)
 ax.legend(handles=[Patch(color=C["hw"], label="NVIDIA OFA — fixed-function SGM engine (not bit-exact to our golden)"),
                    Patch(color=C["sw"], label="our CUDA kernel — bit-exact to the golden hash")],
           loc="lower right", frameon=False, fontsize=9)
