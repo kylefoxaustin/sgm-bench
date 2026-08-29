@@ -49,7 +49,7 @@ UNITS = [
    "and matched path count (ReS2tAC, Sensors 21(11):3938, 2021 — 242 MDE/s).",
    "Best single core measured at 423 MDE/s; scales monotonically 1->8 threads.",
    "D=64 -> D=128 is FLAT (-2.4%): 16 NEON lanes are already full at D=64."]),
- ("Cortex-A78C x8",    "CPU",  94.70, "Qualcomm IQ-9075, NEON  |  single core: 332.22 ms = 400 MDE/s", [
+ ("Cortex-A78C x8",    "CPU",  97.99, "Qualcomm IQ-9075, NEON  |  single core: 332.22 ms = 400 MDE/s", [
    "Ran THIS repository's a55 NEON implementation unmodified, on another",
    "vendor's silicon, and reproduced the golden at every thread count.",
    "Per-core 402 MDE/s vs the A720's 423 — a 5% gap between two wide",

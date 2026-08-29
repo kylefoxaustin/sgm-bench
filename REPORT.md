@@ -109,7 +109,7 @@ paying the DDR round trip that dominates every implementation measured here.
 | 1× Cortex-A720 @2.5 GHz | D=64 | 1 | 313.6 | 3.2 | 6.61 | 423 | **423** |
 | **6× Cortex-A55** @1.8 GHz (i.MX 95 FRDM) | D=64 | 6 | 341.3 | 2.9 | 6.08 | **389** | 82 |
 | **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA, tuned) ¶ | D=64 | — | 23.3 | 42.95 | 89.06 | **5,700** | — |
-| **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
+| **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 98.0 | 10.2 | 21.16 | **1,354** | 395 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
 | **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 136.9 | 7.30 | 15.14 | **969** | — |
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
@@ -120,6 +120,16 @@ Not an estimate and not a different implementation: they ran *this repository's*
 `a55` NEON implementation unmodified, verified the input PGMs on-board against
 the published sha256, and reproduced the golden FNV-1a `46470bd7a464469d` at
 every thread count. Same D, paths, census window and penalties. MEASURED.
+
+§ 🚨 **Every single-invocation Hexagon number carries roughly ±10%, and that is
+a property of the board rather than of the measurement.** The qualcomm session
+found the multi-modality is *between* invocations, not within them, so a larger
+`-n` inside one invocation cannot average it out — it needs interleaved repeats
+across invocations. They demonstrated it by interleaving the old and corrected
+scenes three times in one session: both spanned the same 135–150 ms, minima
+agreeing within 0.5%, which is how they established that a 9.8% apparent
+"regression" on the corrected scene was board state and not content. Quote the
+Hexagon row accordingly.
 
 § ⭐ **Re-sourced 2026-08-29 onto a golden that discriminates the full range.**
 The originally published 137.91 ms / 962 MDE/s was measured on this repo's
@@ -153,8 +163,9 @@ MEASURED, 20 timed frames.
 does not show it**: our A720 scales monotonically 1→2→4→8. Two different
 machines, two different answers, both measured.
 
-⭐ **The per-core reading is now controlled rather than indicative: A78C 402 vs
-A720 423 MDE/s — a 5% gap that needs no explanation.** Two wide out-of-order Arm
+⭐ **The per-core reading is controlled rather than indicative: A78C 395 vs
+A720 423 MDE/s — a 7% gap.** (Both re-verified against the corrected golden;
+the A78C figures moved +1.2% and +2.6% from their pre-fix values.) Two wide out-of-order Arm
 cores from different vendors land in the same place on this algorithm, which is
 a stronger statement about SGM than about either core.
 
