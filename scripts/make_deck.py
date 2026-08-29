@@ -51,7 +51,7 @@ UNITS = [
    "Per-core 402 MDE/s vs the A720's 423 — a 5% gap between two wide",
    "out-of-order Arm cores from different vendors on the same algorithm.",
    "Peaks at SIX threads, not eight; 8 threads is slower on that board."]),
- ("Hexagon v73 NSP",   "DSP", 138.64, "Qualcomm IQ-9075, HVX, 4 HVX contexts", [
+ ("Hexagon v73 NSP",   "DSP", 136.84, "Qualcomm IQ-9075, HVX, 4 HVX contexts", [
    "Went 18.7x -> 12.8x -> 1.45x slower than the A78C cluster IN ONE DAY,",
    "with nothing retracted, because the ratio was always labelled a FLOOR",
    "OF EFFORT rather than the DSP's ceiling.",

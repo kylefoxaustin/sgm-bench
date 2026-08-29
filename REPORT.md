@@ -111,7 +111,7 @@ paying the DDR round trip that dominates every implementation measured here.
 | **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA, tuned) ¶ | D=64 | — | 23.3 | 42.95 | 89.06 | **5,700** | — |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
-| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 138.6 | 7.21 | 14.96 | **957** | — |
+| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 136.8 | 7.31 | 15.15 | **970** | — |
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
 | scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
@@ -120,6 +120,16 @@ Not an estimate and not a different implementation: they ran *this repository's*
 `a55` NEON implementation unmodified, verified the input PGMs on-board against
 the published sha256, and reproduced the golden FNV-1a `46470bd7a464469d` at
 every thread count. Same D, paths, census window and penalties. MEASURED.
+
+§ ⭐ **Re-sourced 2026-08-29 onto a golden that discriminates the full range.**
+The originally published 137.91 ms / 962 MDE/s was measured on this repo's
+`data/synthetic`, whose golden could not see `d >= 45` (above). The qualcomm
+session's own D-parametric work had independently built a discriminating scene
+(`data/wide1080`, true disparities to 154) on which **all 64 disparity values win
+somewhere**, and their kernel reproduces that golden bit-exactly at
+**136.84 ms / 969.8 MDE/s**, hash `33b80d5d35e0fb9b`. The number barely moved;
+the *evidence* went from partial to complete, which is the point. Their D=128
+figure, 238.89 ms / 1111 MDE/s (`fa2238cc8a87af3d`), was always on that scene.
 
 § **Hexagon row is a different implementation** — an independent HVX/FastRPC
 port written by the qualcomm session, not this repository's NEON code. What is
