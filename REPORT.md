@@ -11,13 +11,17 @@ against a measured one without saying so.
 ## The headline
 
 **2,569 MDE/s at 1920×1080 on eight Cortex-A720 cores — 10.6× the fastest
-published Arm-CPU SGM, bit-exact.**
+published Arm-CPU SGM, bit-exact.** That remains the headline because it is the
+*CPU* result and the literature comparison is against CPUs; a Jetson Thor doing
+3,750 MDE/s through CUDA now sits above it in the table, and is a different
+claim about different silicon.
 
 Bit-exact means byte-identical to a scalar reference implementation, verified
-on every run. The same golden hash (`b1b407b5949f0cc1`) is produced by **seven
+on every run. The same golden hash (`b1b407b5949f0cc1`) is produced by **nine
 independent execution targets**: x86-64, Cortex-A55, Cortex-A720, Cortex-A78C,
-two Mali GPUs through OpenCL, and a Hexagon v73 NSP through FastRPC — three
-vendors, four instruction sets, three processor classes. A run whose hash does
+two Mali GPUs through OpenCL, a Hexagon v73 NSP through FastRPC, and two NVIDIA
+GPUs through CUDA — four vendors, four instruction sets, three processor
+classes. A run whose hash does
 not match is void and its timing is discarded.
 
 ---
@@ -89,10 +93,12 @@ paying the DDR round trip that dominates every implementation measured here.
 
 | platform | config | threads | ms | fps | Mpix/s | **MDE/s** | best per-core |
 |---|---|---|---|---|---|---|---|
+| **NVIDIA Thor** (Blackwell, 20 SM, CUDA) ¶ | D=64 | — | 35.4 | 28.26 | 58.59 | **3,750** | — |
 | **8× Cortex-A720** @2.2–2.5 GHz (Radxa O6) | D=64 | 8 | 51.7 | 19.4 | 40.14 | **2,569** | 423 |
 | 8× Cortex-A720 | D=128 | 8 | 105.9 | 9.5 | 19.59 | 2,507 | — |
 | 1× Cortex-A720 @2.5 GHz | D=64 | 1 | 313.6 | 3.2 | 6.61 | 423 | **423** |
 | **6× Cortex-A55** @1.8 GHz (i.MX 95 FRDM) | D=64 | 6 | 341.3 | 2.9 | 6.08 | **389** | 82 |
+| **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA) ¶ | D=64 | — | 72.3 | 13.84 | 28.69 | **1,836** | — |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 94.7 | 10.6 | 21.90 | **1,402** | 402 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
 | **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 138.6 | 7.21 | 14.96 | **957** | — |
@@ -112,6 +118,15 @@ census window, penalties, and the same golden hash `b1b407b5949f0cc1`, held at
 1, 2, 4 and 6 DSP threads, with inputs sha256-verified on the board. MEASURED
 on their hardware; reproduced here by trust in that hash, not by my own run.
 
+¶ **CUDA rows are a deliberate one-for-one port of `mali_cl/sgm.cl`**, not a
+rewrite: that kernel was already verified bit-exact on two Mali parts, so
+porting it mechanically carries the semantics across rather than re-deriving
+them and re-meeting the same tie-break and edge-replication traps. It was
+bit-exact on the first run on both parts. **A block is 16 threads — half a
+warp — which is deliberately poor CUDA occupancy**, so these are floors for
+these GPUs in exactly the sense the Mali number is a floor for the G720.
+MEASURED, 20 timed frames.
+
 ⚠️ Their best is at **six** threads, not eight — 8 threads is *slower* (1,155 vs
 1,402 MDE/s). They report the same inversion on an unrelated workload
 (llama.cpp), so it is a property of that board, not of this program. **The O6
@@ -122,6 +137,34 @@ machines, two different answers, both measured.
 A720 423 MDE/s — a 5% gap that needs no explanation.** Two wide out-of-order Arm
 cores from different vendors land in the same place on this algorithm, which is
 a stronger statement about SGM than about either core.
+
+### The NVIDIA GPUs, and what they do and do not settle
+
+Two CUDA targets were added by porting `mali_cl/sgm.cl` one-for-one. Both were
+bit-exact on the first run, which is the payoff for porting a verified kernel
+instead of writing a new one.
+
+| | ms | MDE/s | vs |
+|---|---|---|---|
+| Jetson Thor (Blackwell, 20 SM) | 35.4 | **3,750** | 1.46× the 8× A720 |
+| Jetson AGX Orin (Ampere, 16 SM) | 72.3 | **1,836** | 3.54× the Mali G720 |
+
+⚠️ **Neither number says a GPU beats a CPU at SGM.** Both are floors, and
+knowingly so: a block is 16 threads, half a warp, chosen to mirror the OpenCL
+kernel's 16-wide work-group rather than to suit CUDA. Nobody has tuned occupancy,
+tiling, or memory layout for these parts. What they establish is that **the
+golden survives a fourth vendor and a third programming model** — and that the
+recurrence which punished the Mali does not punish a GPU with enough parallelism
+across scanlines to hide it.
+
+⭐ **The cost gate is diagnostic even when it does not fire.** Its own ns/op
+output shows Orin's argmin at 0.0535 against census at 0.0137 — **3.9× less
+efficient than the cheapest phase in the same kernel**. That is the serial
+64-iteration argmin loop, one thread per pixel, unvectorised and unreduced. The
+gate passes it because it is calibrated against itself, which is exactly the
+documented limitation: it catches regression from the calibration point, not an
+implementation that was already slow when calibrated. The *numbers* still name
+the phase to fix.
 
 ### 🔴 The wide-unit finding was wrong, and it took three revisions to find out
 

@@ -2,10 +2,11 @@
 
 **How fast can a CPU do Semi-Global Matching, if you refuse to let it be wrong?**
 
-A from-scratch SGM stereo implementation benchmarked across seven execution
+A from-scratch SGM stereo implementation benchmarked across nine execution
 targets — x86-64, Cortex-A55, Cortex-A720, Cortex-A78C, two Mali GPUs via
-OpenCL, and a Hexagon NSP via FastRPC — where **every target must produce the
-same output, byte for byte**, or its timing is thrown away.
+OpenCL, a Hexagon NSP via FastRPC, and Jetson Orin and Thor via CUDA — where
+**every target must produce the same output, byte for byte**, or its timing is
+thrown away.
 
 Current best: **2,569 MDE/s at 1920×1080 on eight Cortex-A720 cores**, which is
 10.4× the fastest published Arm-CPU SGM at matched disparity range and matched
@@ -48,7 +49,9 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 
 | target | class | threads | ms | **MDE/s** | per-core |
 |---|---|---|---|---|---|
+| **NVIDIA Thor** (Blackwell, CUDA) | GPU | — | 35.4 | **3,750** | — |
 | 8× Cortex-A720 (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
+| **NVIDIA Jetson AGX Orin** (Ampere, CUDA) | GPU | — | 72.3 | **1,836** | — |
 | 8× Cortex-A78C (IQ-9075) | CPU | 6 | 94.7 | 1,402 | 402 |
 | 6× Cortex-A55 (i.MX 95) | CPU | 6 | 341.3 | 389 | 82 |
 | Mali-G720, 10 CU | GPU | — | 256 | 518 | — |
@@ -207,6 +210,7 @@ the freedom is worth more as permission not to worry than as an optimisation.
     colmajor/        column-major layout experiment — contributed, not my work
     hvx/             Hexagon HVX kernels — contributed, not my work
     mali_cl/         OpenCL kernel + host
+    cuda/            CUDA port of the OpenCL kernel (Jetson Orin / Thor)
     scripts/pin.sh   topology-aware pinning wrapper
     data/golden/     golden disparity map + sha256 + the params that produced it
     REPORT.md        the measurement record, with provenance on every number

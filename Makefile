@@ -72,6 +72,18 @@ golden: bin/sgm_ref data/synthetic/left.pgm
 	  ./bin/sgm_ref data/real/left.pgm data/real/right.pgm -w 0 -n 1 -o data/golden/real.pgm && \
 	  sha256sum data/golden/real.pgm > data/golden/real.sha256; fi
 
+# ---- CUDA (Jetson Orin / Thor / discrete) ----
+# nvcc compiles the impl; the harness and utils stay C and are linked in.
+#   make cuda NVARCH=sm_87     (Orin)      make cuda NVARCH=native  (anything)
+NVCC   ?= /usr/local/cuda/bin/nvcc
+NVARCH ?= native
+cuda: | bin
+	$(CC) -O2 -Wall -std=gnu11 -Icommon -DCFLAGS_STR='"nvcc -O3 -arch=$(NVARCH)"' \
+	      -DGIT_SHA='"$(GIT_SHA)"' -c common/harness.c -o bin/harness.o
+	$(CC) -O2 -Icommon -c common/util.c -o bin/util.o
+	$(NVCC) -O3 -Icommon -arch=$(NVARCH) -c cuda/sgm_cuda.cu -o bin/sgm_cuda.o
+	$(NVCC) -o bin/sgm_cuda bin/harness.o bin/util.o bin/sgm_cuda.o
+
 # ---- calibrate the cost gate on a build you trust ----
 # The roofline gate is armed by a calibration recorded per implementation and
 # per board. Run this ONLY on a build you have reason to believe is healthy:
@@ -95,4 +107,4 @@ check: all
 clean:
 	rm -rf bin
 
-.PHONY: all golden check clean roofline-cal
+.PHONY: all golden check clean roofline-cal cuda
