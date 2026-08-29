@@ -179,6 +179,14 @@ is 7.8× faster than Orin's at the same settings — a generational jump in the
 fixed-function block that is far larger than the 1.5× between the two GPUs. On
 Orin, a hand-written CUDA kernel beats the silicon built for this exact job.
 
+🔴 **And the throughput comparison says nothing about quality.** An attempt to
+score both against ground truth validated our own implementation (2.6% bad
+pixels, MAE 0.45 over the searchable range) but could not resolve OFA's output
+convention — it does not align under any simple descaling. **OFA's accuracy is
+unmeasured.** `REPORT.md` has the full adversarial review, including a first
+attempt at that measurement which scored our own bit-exact code at 40% bad by
+including pixels no D=128 search can reach.
+
 ⚠️ **These rows are NOT bit-exact to our golden and are not gated by it.** VPI's
 SGM is a different implementation — its own census, penalties, and confidence
 output — so this is a throughput comparison at matched resolution and disparity

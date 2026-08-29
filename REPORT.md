@@ -510,6 +510,81 @@ CPU block alone, and rule 6 says leave the cell empty rather than estimate.
 
 ---
 
+## 🔍 Adversarial review of these results
+
+Written by attacking the results rather than restating them. Five findings, in
+descending order of how much they should change your reading.
+
+### 1. 🔴 The OFA accuracy comparison does not work, so no quality claim is made
+
+The throughput comparison against NVIDIA's hardware engine says **nothing about
+output quality**, and an attempt to measure that failed:
+
+| | bad > 1px | MAE |
+|---|---|---|
+| our SGM, restricted to the searchable range | **2.6%** | **0.45** |
+| OFA, same restriction, best of three descalings | 100% | 21.2 |
+
+Our own implementation validates beautifully against the synthetic ground truth,
+which proves the method and the GT are sound. OFA's output does not align under
+any simple scaling — descaled mean 52 against a GT mean of 34 — so either its
+disparity convention differs from ours or my extraction from the sample's
+display-scaled PNG is wrong. **Until that is resolved, OFA's accuracy is
+unmeasured and the 2.34× is a throughput number only.**
+
+⚠️ **My first attempt at this measurement was invalid and would have been
+embarrassing.** Comparing over the whole frame gave 40.4% bad pixels for our own
+bit-exact implementation. The cause: 38.8% of the scene has true disparity ≥ 120
+and cannot be found at D=128 at all. Scoring an algorithm on pixels it is
+structurally incapable of reaching is not a measurement of the algorithm.
+
+### 2. ✅ The path-count mismatch was real and turned out not to matter
+
+VPI defaults to `includeDiagonals = 1` — **8 paths against our 4** — so the
+comparison was between unequal amounts of work. Rather than apply the
+literature's 1.45× scaling, it was measured:
+
+| | 8 paths | 4 paths |
+|---|---|---|
+| Thor OFA | 9.42 ms | 9.85 ms |
+| Orin OFA | 72.66 ms | 72.45 ms |
+
+**OFA's cost is independent of path count on both parts.** The timing comparison
+therefore stands unchanged — and the correct reading is stronger than before:
+OFA delivers an *8-path* result in the time our kernel delivers a *4-path* one.
+
+### 3. ⚠️ The timed regions are not identical
+
+Our figure is end-to-end: host→device copy, census, cost, aggregate, argmin,
+device→host copy. The OFA figure wraps only `vpiSubmitStereoDisparityEstimator`
+plus the stream sync; the sample's colour conversion and any upload sit outside
+it. The excluded work is sub-millisecond against 9–22 ms, so this biases in
+OFA's favour by under ~5% and does not change the conclusion — but the two
+numbers are not the same measurement and should not be quoted as if they were.
+
+### 4. ⚠️ The 247 GB/s ceiling is a best case, so "59% of it" understates us
+
+That figure comes from a pure `float4` streaming copy. Our aggregate phase is a
+read-modify-write over a 265 MB working set with a half-width scratch — a
+pattern that cannot reach copy bandwidth on any GPU. The true achievable ceiling
+for this access pattern is lower and unmeasured, so 145 GB/s is closer to the
+real limit than "59%" suggests.
+
+### 5. ⚠️ Two comparisons rest on things that are not known
+
+- **The A78C per-core result assumes comparable clocks.** "A78C 402 vs A720 423,
+  a 5% gap" is only a statement about cores if they run at similar frequencies.
+  The A720 figure is at a measured 2.5 GHz; the A78C clock was never read,
+  because that board is under another session's lease. If the A78C is slower per
+  clock the conclusion inverts.
+- **"699× the scalar reference" is not a speedup claim.** That reference is
+  deliberately unoptimised — `-O2`, no SIMD, single thread — and exists to define
+  the golden, not to be competitive. It is the floor, not a baseline.
+
+Also: **every timing in this report comes from one synthetic scene.** SGM's
+control flow is data-independent so the numbers should hold, but that is an
+argument, not a measurement.
+
 ## 🚨 A defect in this harness, found by someone else
 
 **Until 2026-08-28 the `-t` flag did nothing.** Every implementation takes a
