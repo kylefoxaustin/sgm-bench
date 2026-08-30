@@ -166,7 +166,7 @@ for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
         vals = (lab, cls, "stereo mode removed", "—", "—", "—", "UNSUPPORTED_FEATURE")
     elif lab in HWNAMES:
         vals = (lab, cls, f"{ms:,.2f} ms (D={hwd})", f"{1000/ms:,.1f}",
-                f"{W*H*hwd/ms/1000:,.0f}", "—", "throughput only")
+                f"{W*H*hwd/ms/1000:,.0f}", "—", f"{base/ms:,.0f}x (time only)")
     else:
         vals = ((lab, cls, "—" if ms is None else f"{ms:,.2f} ms",
              "—" if ms is None else f"{1000/ms:,.1f}",
@@ -256,8 +256,10 @@ textbox(sB, .6, 1.12, 12.2, .5,
         "census 9x7 on SobelX  ·  P2=200 saturating  ·  every row bit-exact to golden bcb9cb0bd6f49799",
         13, False, MUTED)
 
-BROWS = [  # label, class, ms, MDE/s(work) as published
+BROWS = [  # label, class, ms, MDE/s(work) as published — ms-sorted, OFA slotted in
+ ("NVIDIA OFA on Thor (ds=2)",  "HW",      3.38,  None),
  ("NVIDIA RTX 5090",            "GPU",     9.08, 13538),
+ ("NVIDIA OFA on Orin (ds=2)",  "HW",     14.90,  None),
  ("NVIDIA Thor",                "GPU",    45.1,   2723),
  ("NVIDIA Orin AGX",            "GPU",    72.8,   1688),
  ("Cortex-A78C x8 (6 threads)", "CPU",   211.9,    580),
@@ -270,8 +272,6 @@ BROWS = [  # label, class, ms, MDE/s(work) as published
  ("Cortex-A55 x1",              "CPU",  2201.0,     56),
  ("Mali-G310 (1 CU)",           "GPU",  2704.0,     45),
  ("scalar reference",           "REF", 14265.0,    8.6),
- ("NVIDIA OFA on Thor (ds=2)",  "HW",      3.38,  None),
- ("NVIDIA OFA on Orin (ds=2)",  "HW",     14.90,  None),
 ]
 tblB = sB.shapes.add_table(len(BROWS)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.6, 1.0, 1.9, 1.3, 1.9, 2.4)): tblB.columns[i].width = Inches(w)
@@ -286,7 +286,7 @@ for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
     if ms is not None and mdev is None:
         fps = 1000.0/ms
         vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—",
-                "own algorithm, matched geometry")
+                f"{baseB/ms:,.0f}x (time only)")
     elif ms is None:
         vals = (lab, cls, "cannot run it", "—", "—", "no 8-path, weighted-P1 or two-scale controls")
     else:
@@ -341,14 +341,15 @@ textbox(sl, .6, 7.18, 12.2, .3,
 # ---------------- Configuration C: one variable at a time ----------------
 sC = prs.slides.add_slide(blank)
 textbox(sC, .6, .32, 12.2, .9, "Configuration C: one variable at a time", 28, True)
-textbox(sC, .6, 1.12, 12.2, .6,
-        "A and B differ in TWO ways at once - algorithm AND resolution - so their fps cannot be compared without "
-        "compounding explanations. C is exactly B's algorithm on A's own 1920x1080 stereo pair (out 960x540). "
-        "A->C isolates the algorithm; C->B isolates resolution. Golden 0f0961d623009df5, every row bit-exact.",
+textbox(sC, .6, 1.1, 12.2, .5,
+        "C is exactly B's algorithm on A's own 1920x1080 stereo pair (out 960x540): A->C isolates the ALGORITHM, "
+        "C->B isolates RESOLUTION - one knob each. Golden 0f0961d623009df5, every software row bit-exact.",
         12, False, MUTED)
 
 CROWS = [
+ ("NVIDIA OFA on Thor (ds=2)",   "HW",     4.08,  None, "1.21  (time only — own algorithm)"),
  ("NVIDIA RTX 5090",             "GPU",   11.96, 13870, "1.32"),
+ ("NVIDIA OFA on Orin (ds=2)",   "HW",    19.51,  None, "1.31  (time only — own algorithm)"),
  ("NVIDIA Thor",                 "GPU",   56.7,   2928, "1.26"),
  ("NVIDIA Orin AGX",             "GPU",   96.9,   1711, "1.33"),
  ("Cortex-A720 x8",              "CPU",  239.6,    692, "1.01  <- see note"),
@@ -362,7 +363,7 @@ CROWS = [
  ("Mali-G310 (1 CU)",            "GPU", 3657.0,     45, "1.35"),
  ("scalar reference",            "REF",18020.0,    9.2, "1.26"),
 ]
-tblC = sC.shapes.add_table(len(CROWS)+1, 5, Inches(.6), Inches(2.0), Inches(12.1), Inches(0.4)).table
+tblC = sC.shapes.add_table(len(CROWS)+1, 5, Inches(.6), Inches(1.66), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.8, 1.0, 2.0, 2.2, 3.1)): tblC.columns[i].width = Inches(w)
 for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.24)
 for c, t in enumerate(("processing unit", "class", "runtime", "MDE/s (work)", "xB  (pixels predict 1.35x)")):
@@ -380,18 +381,17 @@ for rr_, (lab, cls, ms, mdev, xb) in enumerate(CROWS, start=1):
         run.font.bold = (c in (0, 3))
         if c == 1: run.font.color.rgb = ACC[cls]; run.font.bold = True
 
-textbox(sC, .6, 5.85, 12.2, .8,
+textbox(sC, .6, 5.95, 12.2, .7,
         "Two clean statements on the 5090, one knob each:  A -> C (same input images, algorithm swap): "
         "3.46 -> 11.96 ms - the two-scale 8-path algorithm costs ~3.5x the single-scale 4-path one.  "
         "C -> B (same algorithm, 1080 -> 800 rows): 11.96 -> 9.08 ms - the smaller frame buys back exactly "
-        "its pixel share.", 12, True, INK)
-textbox(sC, .6, 6.62, 12.2, .6,
+        "its pixel share.", 11.5, True, INK)
+textbox(sC, .6, 6.68, 12.2, .5,
         "The exception is the finding: the A720 CLUSTER runs C at B's wall-clock (1.01x) while its single core "
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
-        "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 11, False, INK)
-textbox(sC, .6, 7.14, 12.2, .36,
-        "A78C and NSP cells are medians of repeated invocations on that bimodal board (NSP: 5 invocations, 1.7% spread, unmodified Config B kernels). "
-        "OFA engines at matched geometry, running their OWN algorithm (not gated): Thor 4.08 ms, Orin 19.51 ms.",
+        "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
+textbox(sC, .6, 7.2, 12.2, .3,
+        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact, MDE/s(work) undefined.",
         9.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
