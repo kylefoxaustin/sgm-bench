@@ -270,11 +270,12 @@ BROWS = [  # label, class, ms, MDE/s(work) as published
  ("Cortex-A55 x1",              "CPU",  2201.0,     56),
  ("Mali-G310 (1 CU)",           "GPU",  2704.0,     45),
  ("scalar reference",           "REF", 14265.0,    8.6),
- ("NVIDIA OFA engines",         "HW",     None,  None),
+ ("NVIDIA OFA on Thor (ds=2)",  "HW",      3.38,  None),
+ ("NVIDIA OFA on Orin (ds=2)",  "HW",     14.90,  None),
 ]
 tblB = sB.shapes.add_table(len(BROWS)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.6, 1.0, 1.9, 1.3, 1.9, 2.4)): tblB.columns[i].width = Inches(w)
-for rr_ in range(len(BROWS)+1): tblB.rows[rr_].height = Inches(0.27)
+for rr_ in range(len(BROWS)+1): tblB.rows[rr_].height = Inches(0.25)
 for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "vs scalar reference")):
     cell = tblB.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
@@ -282,7 +283,11 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseB = 14265.0
 for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
-    if ms is None:
+    if ms is not None and mdev is None:
+        fps = 1000.0/ms
+        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—",
+                "own algorithm, matched geometry")
+    elif ms is None:
         vals = (lab, cls, "cannot run it", "—", "—", "no 8-path, weighted-P1 or two-scale controls")
     else:
         fps = 1000.0/ms
@@ -308,8 +313,9 @@ for i, (big, small) in enumerate(CALLOUTS_B):
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
 textbox(sB, .6, 7.28, 12.2, .3,
-        "MDE/s (work) = work-performed convention, both full-search scales count: (0.384 + 1.536) Mpx x 64 / runtime. "
-        "Same implementation tiers as Configuration A: tuned CUDA / OpenCL / NEON+OpenMP / HVX, scalar oracle as the floor.",
+        "MDE/s (work) = both full-search scales count: (0.384 + 1.536) Mpx x 64 / runtime. OFA rows: the engines' OWN "
+        "SGM at matched in/out geometry (1920x800 -> 960x400 via downscaleFactor=2, D=128) - throughput only, not gated; "
+        "full-res-out variants 9.15 / 54.94 ms. Software tiers as Configuration A.",
         10, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
@@ -358,32 +364,35 @@ CROWS = [
 ]
 tblC = sC.shapes.add_table(len(CROWS)+1, 5, Inches(.6), Inches(2.0), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.8, 1.0, 2.0, 2.2, 3.1)): tblC.columns[i].width = Inches(w)
-for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.26)
+for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.24)
 for c, t in enumerate(("processing unit", "class", "runtime", "MDE/s (work)", "xB  (pixels predict 1.35x)")):
     cell = tblC.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 for rr_, (lab, cls, ms, mdev, xb) in enumerate(CROWS, start=1):
-    for c, t in enumerate((lab, cls, f"{ms:,.1f} ms", f"{mdev:,}" if mdev >= 10 else f"{mdev}", xb)):
+    cells = (lab, cls, "—" if ms is None else f"{ms:,.1f} ms",
+             "—" if mdev is None else (f"{mdev:,}" if mdev >= 10 else f"{mdev}"), xb)
+    for c, t in enumerate(cells):
         cell = tblC.cell(rr_, c); cell.text = str(t)
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
         run.font.size = Pt(10.5); run.font.color.rgb = INK
         run.font.bold = (c in (0, 3))
         if c == 1: run.font.color.rgb = ACC[cls]; run.font.bold = True
 
-textbox(sC, .6, 5.55, 12.2, .9,
+textbox(sC, .6, 5.85, 12.2, .8,
         "Two clean statements on the 5090, one knob each:  A -> C (same input images, algorithm swap): "
         "3.46 -> 11.96 ms - the two-scale 8-path algorithm costs ~3.5x the single-scale 4-path one.  "
         "C -> B (same algorithm, 1080 -> 800 rows): 11.96 -> 9.08 ms - the smaller frame buys back exactly "
-        "its pixel share.", 12.5, True, INK)
-textbox(sC, .6, 6.5, 12.2, .8,
+        "its pixel share.", 12, True, INK)
+textbox(sC, .6, 6.62, 12.2, .6,
         "The exception is the finding: the A720 CLUSTER runs C at B's wall-clock (1.01x) while its single core "
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
-        "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 11.5, False, INK)
-textbox(sC, .6, 7.25, 12.2, .3,
-        "A78C and NSP cells are medians of repeated invocations on that bimodal board (NSP: 5 invocations, 1.7% spread, unmodified Config B kernels).",
-        10, False, MUTED)
+        "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 11, False, INK)
+textbox(sC, .6, 7.14, 12.2, .36,
+        "A78C and NSP cells are medians of repeated invocations on that bimodal board (NSP: 5 invocations, 1.7% spread, unmodified Config B kernels). "
+        "OFA engines at matched geometry, running their OWN algorithm (not gated): Thor 4.08 ms, Orin 19.51 ms.",
+        9.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
 # Same treatment as the primary configuration: the arithmetic that produced the
