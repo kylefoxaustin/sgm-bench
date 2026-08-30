@@ -248,6 +248,70 @@ textbox(sl, .6, 7.12, 12.2, .4,
         "minimum here against 20 on the synthetic scene, so the hash-critical tie-break rule is pinned 720x harder.",
         11, False, MUTED)
 
+# ---------------- Configuration B summary table ----------------
+sB = prs.slides.add_slide(blank)
+textbox(sB, .6, .32, 12.2, .9, "Configuration B across the same roster", 28, True)
+textbox(sB, .6, 1.12, 12.2, .5,
+        "1920x800 in, 960x400 out  ·  two full 64-D scales, costs averaged  ·  8 paths, weighted P1  ·  "
+        "census 9x7 on SobelX  ·  P2=200 saturating  ·  every row bit-exact to golden bcb9cb0bd6f49799",
+        13, False, MUTED)
+
+BROWS = [  # label, class, ms, MDE/s(work) as published
+ ("NVIDIA RTX 5090",            "GPU",     9.06, 13559),
+ ("NVIDIA Thor",                "GPU",    45.1,   2723),
+ ("NVIDIA Orin AGX",            "GPU",    72.8,   1688),
+ ("Cortex-A78C x8 (6 threads)", "CPU",   211.9,    580),
+ ("Cortex-A720 x8",             "CPU",   238.3,    516),
+ ("Hexagon v73 NSP",            "DSP",   276.3,    445),
+ ("Mali-G720 (10 CU)",          "GPU",   380.0,    323),
+ ("Cortex-A78C x1",             "CPU",   442.6,    278),
+ ("Cortex-A720 x1",             "CPU",   470.9,    261),
+ ("Cortex-A55 x6",              "CPU",   640.1,    192),
+ ("Cortex-A55 x1",              "CPU",  2201.0,     56),
+ ("Mali-G310 (1 CU)",           "GPU",  2704.0,     45),
+ ("scalar reference",           "REF", 14265.0,    8.6),
+ ("NVIDIA OFA engines",         "HW",     None,  None),
+]
+tblB = sB.shapes.add_table(len(BROWS)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.6, 1.0, 1.9, 1.3, 1.9, 2.4)): tblB.columns[i].width = Inches(w)
+for rr_ in range(len(BROWS)+1): tblB.rows[rr_].height = Inches(0.27)
+for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "vs scalar reference")):
+    cell = tblB.cell(0, c); cell.text = t
+    pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
+    pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
+    cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
+baseB = 14265.0
+for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
+    if ms is None:
+        vals = (lab, cls, "cannot run it", "—", "—", "no 8-path, weighted-P1 or two-scale controls")
+    else:
+        fps = 1000.0/ms
+        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.1f}" if fps >= 10 else f"{fps:.2f}",
+                f"{mdev:,}" if mdev >= 10 else f"{mdev}",
+                f"{baseB/ms:,.0f}x faster" if ms != baseB else "the floor (1x)")
+    for c, t in enumerate(vals):
+        cell = tblB.cell(rr_, c); cell.text = str(t)
+        pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
+        run.font.size = Pt(11); run.font.color.rgb = MUTED if ms is None else INK
+        run.font.bold = (c in (0, 4)) and ms is not None
+        if c == 1:
+            run.font.color.rgb = ACC[cls]; run.font.bold = True
+
+CALLOUTS_B = [("1,575x", "faster than the scalar reference,\nwith byte-identical output"),
+              ("1.30x / 1.60x", "cluster over one NSP at matched tiers\n/ one NSP over one A78C core"),
+              ("13 / 4 / 1", "targets / programming models (CUDA,\nOpenCL, NEON, HVX) / one golden hash")]
+for i, (big, small) in enumerate(CALLOUTS_B):
+    x = .6 + i * 4.1
+    textbox(sB, x, 6.35, 3.9, .6, big, 28, True, ACC["GPU"] if i == 0 else INK)
+    tf = textbox(sB, x, 6.85, 3.9, .8, small.split("\n")[0], 12, False, MUTED)
+    pp = tf.add_paragraph(); rr = pp.add_run(); rr.text = small.split("\n")[1]
+    rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
+
+textbox(sB, .6, 7.28, 12.2, .3,
+        "MDE/s (work) = work-performed convention, both full-search scales count: (0.384 + 1.536) Mpx x 64 / runtime. "
+        "Same implementation tiers as Configuration A: tuned CUDA / OpenCL / NEON+OpenMP / HVX, scalar oracle as the floor.",
+        10, False, MUTED)
+
 # ---------------- Configuration B slide ----------------
 sl = prs.slides.add_slide(blank)
 textbox(sl, .6, .35, 12, .7, "Configuration B: multi-scale, 8-path", 30, True)
