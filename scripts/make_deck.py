@@ -195,6 +195,47 @@ textbox(s1, .6, 7.28, 12.2, .3,
         "Aggregation streams 1.46 GB/frame at 1080p D=64. Blank = not instrumented. "
         "MDE/s = W x H x D / runtime — right for comparing implementations, wrong for choosing a configuration.", 10, False, MUTED)
 
+# ---------------- bandwidth slide ----------------
+sBW = prs.slides.add_slide(blank)
+textbox(sBW, .6, .32, 12.2, .8, "This workload is about moving data", 30, True)
+textbox(sBW, .6, 1.1, 12.2, .5,
+        "At 1080p D=64 the aggregation phase alone streams 1.46 GB per frame (the summed cost volume is 265 MB, "
+        "touched four times). Every ceiling is MEASURED with a streaming-copy probe on the part itself; every "
+        "achieved figure is DERIVED as the kernel's exact modelled byte count / the measured phase time.", 12, False, MUTED)
+BWROWS = [
+ ("NVIDIA RTX 5090",  "2.49 ms",  "587",  "1,385", "42%", "memory-bound -- and the LEAST efficient of the three"),
+ ("NVIDIA Thor",      "10.04 ms", "145",  "249",   "58%", "memory-bound"),
+ ("NVIDIA Orin AGX",  "16.83 ms", "87",   "175",   "49%", "memory-bound"),
+ ("Mali-G720 (10 CU)","--",       "16.1", "46.3",  "35%", "not bandwidth-bound"),
+ ("8x Cortex-A720",   "--",       "6.6",  "46.3",  "14%", "compute-bound"),
+ ("Hexagon v73 NSP",  "--",       "6.8",  "28",    "24%", "LATENCY-bound (28 GB/s available, 6.8 used)"),
+ ("8x Cortex-A78C",   "--",       "3.4",  "--",    "--",  "ceiling unmeasured on that board -- stated, not guessed"),
+ ("6x Cortex-A55",    "--",       "1.1",  "13.7",  "8%",  "compute-bound"),
+]
+tblW = sBW.shapes.add_table(len(BWROWS)+1, 6, Inches(.6), Inches(2.0), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((2.6, 1.5, 1.6, 1.5, 1.1, 3.8)): tblW.columns[i].width = Inches(w)
+for rr_ in range(len(BWROWS)+1): tblW.rows[rr_].height = Inches(0.34)
+for c, t in enumerate(("processing unit", "aggregate", "achieved GB/s", "ceiling GB/s", "util", "wall")):
+    cell = tblW.cell(0, c); cell.text = t
+    pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
+    pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
+    cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
+for rr_, row in enumerate(BWROWS, start=1):
+    for c, t in enumerate(row):
+        cell = tblW.cell(rr_, c); cell.text = str(t)
+        pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
+        run.font.size = Pt(11); run.font.color.rgb = INK; run.font.bold = (c in (0, 2))
+textbox(sBW, .6, 5.4, 12.2, .9,
+        "One column, two walls: the NVIDIA GPUs sit at 42-58% of their measured ceilings -- memory-bound, which is why "
+        "their optimisation ended at traffic reduction. The CPUs and Malis sit at 8-35% -- NOT bandwidth-bound, which is "
+        "why their wins came from arithmetic (vectorised argmin, blocking, lane tricks). The Hexagon is a third wall: "
+        "latency-bound, hidden by interleaving independent dependency chains.", 12.5, True, INK)
+textbox(sBW, .6, 6.5, 12.2, .7,
+        "Cross-GPU sanity: MDE/s per GB/s of ceiling is 27 / 40 / 33 across a 7.9x bandwidth spread -- throughput largely "
+        "IS bandwidth for the tuned GPU kernels, and the residual (the 5090's 42%) says the fastest part is no longer "
+        "purely bandwidth-bound. Achieved-byte instrumentation exists for Configuration A; the B/C runs reuse the same "
+        "silicon and ceilings but their per-phase byte models are not separately derived.", 11, False, MUTED)
+
 # ---------------- one slide per unit ----------------
 for lab, cls, ms, sil, notes in UNITS:
     sl = prs.slides.add_slide(blank)
@@ -314,8 +355,9 @@ for i, (big, small) in enumerate(CALLOUTS_B):
 
 textbox(sB, .6, 7.28, 12.2, .3,
         "MDE/s (work) = both full-search scales count: (0.384 + 1.536) Mpx x 64 / runtime. OFA rows: the engines' OWN "
-        "SGM at matched in/out geometry (1920x800 -> 960x400 via downscaleFactor=2, D=128) - throughput only, not gated; "
-        "full-res-out variants 9.15 / 54.94 ms. Software tiers as Configuration A.",
+        "SGM at matched geometry (downscaleFactor=2, D=128), throughput only; full-res-out variants 9.15 / 54.94 ms. "
+        "DRAM: same silicon and MEASURED ceilings as the bandwidth slide; Config B's per-phase byte model is not "
+        "separately derived, so no achieved column is claimed here.",
         10, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
@@ -399,7 +441,8 @@ textbox(sC, .6, 6.68, 12.2, .5,
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
 textbox(sC, .6, 7.2, 12.2, .3,
-        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact, MDE/s(work) undefined.",
+        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact, "
+        "MDE/s(work) undefined. DRAM: ceilings as on the bandwidth slide; no per-phase achieved bytes derived for C.",
         9.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
