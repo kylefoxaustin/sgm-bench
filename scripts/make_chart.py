@@ -22,7 +22,7 @@ DATA = [
     ("NVIDIA Orin AGX GPU",     "GPU",  23.28,  5700),
     ("Cortex-A720 x8 @2.2-2.5GHz","CPU", 51.70,  2569),
     ("Cortex-A78C x8",          "CPU",  97.99,  1354),
-    ("Hexagon v73 NSP @1.46GHz","DSP", 136.91,   969),
+    ("Hexagon v73 NSP @1.46GHz","DSP", 148.44,   894),
     ("Mali-G720 (10 CU)",       "GPU", 256.00,   518),
     ("Cortex-A720 x1 @2.5GHz",  "CPU", 313.60,   423),
     ("Cortex-A78C x1",          "CPU", 336.11,   395),

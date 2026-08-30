@@ -49,7 +49,7 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
 | 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
 | 8× Cortex-A78C (IQ-9075) | CPU | 6 | 98.0 | 1,354 | 395 |
-| **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 136.9 | **969** | — |
+| **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 148.4 | **894** | — |
 | Mali-G720, 10 CU | GPU | — | 256.0 | 518 | — |
 | 1× Cortex-A720 @2.5 GHz | CPU | 1 | 313.6 | 423 | 423 |
 | 1× Cortex-A78C | CPU | 1 | 336.1 | 395 | 395 |
@@ -106,7 +106,8 @@ here. SGM's aggregation is a serial recurrence in x or y, so the obvious reading
 is that a wide unit can fill lanes but cannot hide the dependency. On that
 reading the Hexagon NSP first measured **18.7× slower** than the CPU cluster.
 
-It is now **1.45×**, and it beats a *single* A78C core by **2.40×** — a 13× move
+It is now **1.51× on medians** (the board is bimodal between invocations, so
+minima flatter it), and it beats a *single* A78C core by **2.26×** — a ~12× move
 in one day, bit-exact throughout. **The latency is hideable**, by interleaving
 independent dependency chains at a cost in registers; the part that was
 latency-bound was never bandwidth-bound (28.17 GB/s available, 6.8 consumed).

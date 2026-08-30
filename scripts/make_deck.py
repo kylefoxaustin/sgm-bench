@@ -55,11 +55,11 @@ UNITS = [
    "Per-core 402 MDE/s vs the A720's 423 — a 5% gap between two wide",
    "out-of-order Arm cores from different vendors on the same algorithm.",
    "Peaks at SIX threads, not eight; 8 threads is slower on that board."]),
- ("Hexagon v73 NSP",   "DSP", 136.84, "Qualcomm IQ-9075, HVX, 4 HVX contexts", [
-   "Went 18.7x -> 12.8x -> 1.45x slower than the A78C cluster IN ONE DAY,",
-   "with nothing retracted, because the ratio was always labelled a FLOOR",
-   "OF EFFORT rather than the DSP's ceiling.",
-   "BEATS A SINGLE A78C CORE BY 2.40x.",
+ ("Hexagon v73 NSP",   "DSP", 148.44, "Qualcomm IQ-9075, HVX, 4 HVX contexts", [
+   "MEDIAN of 5 invocations; the board is BIMODAL between invocations (18% at",
+   "720p) so minima are the estimator most sensitive to luck -- quote medians.",
+   "Went 18.7x -> ... -> 1.51x vs the A78C cluster across one day of tuning,",
+   "nothing retracted: always labelled a floor of EFFORT. Beats one A78C core 2.26x.",
    "Six hardware threads but only FOUR HVX contexts, so 4 threads is optimal.",
    "Still latency-bound at 6.8 of 28 GB/s — a different wall to Thor's."]),
  ("Mali-G720",         "GPU", 256.00, "Immortalis, 10 CU, OpenCL 3.0", [

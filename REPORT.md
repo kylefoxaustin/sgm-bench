@@ -111,7 +111,7 @@ paying the DDR round trip that dominates every implementation measured here.
 | **NVIDIA Jetson AGX Orin** (Ampere, 16 SM, CUDA, tuned) ¶ | D=64 | — | 23.3 | 42.95 | 89.06 | **5,700** | — |
 | **8× Cortex-A78C** (Qualcomm IQ-9075) ‡ | D=64 | **6** | 98.0 | 10.2 | 21.16 | **1,354** | 395 |
 | Mali-G720-Immortalis, 10 CU (OpenCL) | D=64 | — | 256 | 3.9 | 8.09 | 518 | — |
-| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 136.9 | 7.30 | 15.14 | **969** | — |
+| **Hexagon v73 NSP** (IQ-9075, FastRPC) § | D=64 | **4** | 148.4 | 6.74 | 13.97 | **894** | — |
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
 | scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
@@ -142,12 +142,31 @@ the *evidence* went from partial to complete, which is the point. Their D=128
 figure, 238.89 ms / 1111 MDE/s (`fa2238cc8a87af3d`), was always on that scene.
 
 § **Hexagon row is a different implementation** — an independent HVX/FastRPC
-port by the qualcomm session, not this repository's code. Its 136.9 ms / 969
-figure is measured on **their `data/wide1080` scene** (hash `33b80d5d35e0fb9b`,
-all 64 disparities winning somewhere), not on this repo's synthetic pair — the
-one row in the table whose golden differs, kept because that scene's evidence is
-*stronger* than the shared one's was when the number was taken. n=20, and every
-single-invocation figure from that board carries the ±10–18% noted above.
+port by the qualcomm session — and it is the **median of five invocations
+(148.44 ms, spread 10.4%)**, because that board is **bimodal between
+invocations**: at 720p its two modes are 76.5 and 64.6 ms, 18% apart, and both
+scenes hit both modes when interleaved. A larger `-n` inside one invocation
+cannot sample that, and on such hardware **the minimum is the estimator most
+sensitive to which invocations got lucky** — it cost them two retracted
+headlines in one day. Hash-gated on `46470bd7a464469d` (the generation whose
+top disparity is reachable, though by 2 pixels; the current `0bc010…` golden
+pins it at scale).
+
+Their audited D-sweep, medians of five invocations each:
+
+| D | median ms | MDE/s | spread |
+|---|---|---|---|
+| 32 | 96.16 | 690 | 20.1% |
+| 64 | 148.44 | 894 | 10.4% |
+| 128 | 240.65 | 1,103 | **1.3%** |
+
+⭐ **"Efficiency rises with D" survives on both estimators** (+29.6%/+23.4% on
+medians) — the one headline they specifically re-audited after two others fell
+to the estimator, and it came through stronger. ⭐ And **run-to-run spread falls
+monotonically with D** (20.1 → 10.4 → 1.3%): a fuller vector is not only faster
+per disparity but far more repeatable — consistent with the latency-exposure
+mechanism, though variance is a weaker quantity than the retracted penalty
+comparison.
 
 ¶ **CUDA rows are a deliberate one-for-one port of `mali_cl/sgm.cl`**, not a
 rewrite: that kernel was already verified bit-exact on two Mali parts, so
