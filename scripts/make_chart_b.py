@@ -15,7 +15,7 @@ from matplotlib.patches import Patch
 # (label, class, ms, MDE/s work) — MEASURED. Same tiers as Configuration A:
 # tuned CUDA / OpenCL / NEON+OpenMP, scalar oracle as the floor.
 DATA = [
-    ("NVIDIA RTX 5090 GPU",        "GPU",     9.06, 13559),
+    ("NVIDIA RTX 5090 GPU",        "GPU",     9.08, 13538),
     ("NVIDIA Thor GPU",            "GPU",    45.1,   2723),
     ("NVIDIA Orin AGX GPU",        "GPU",    72.8,   1688),
     ("Cortex-A78C x8 (6 threads)", "CPU",   211.9,    580),

@@ -257,7 +257,7 @@ textbox(sB, .6, 1.12, 12.2, .5,
         13, False, MUTED)
 
 BROWS = [  # label, class, ms, MDE/s(work) as published
- ("NVIDIA RTX 5090",            "GPU",     9.06, 13559),
+ ("NVIDIA RTX 5090",            "GPU",     9.08, 13538),
  ("NVIDIA Thor",                "GPU",    45.1,   2723),
  ("NVIDIA Orin AGX",            "GPU",    72.8,   1688),
  ("Cortex-A78C x8 (6 threads)", "CPU",   211.9,    580),
@@ -332,6 +332,58 @@ textbox(sl, .6, 7.18, 12.2, .3,
         "MDE/s is the work-performed convention - both scales count. The OFA engines cannot run this "
         "configuration (no 8-path, weighted-P1 or two-scale controls).", 10, False, MUTED)
 
+# ---------------- Configuration C: one variable at a time ----------------
+sC = prs.slides.add_slide(blank)
+textbox(sC, .6, .32, 12.2, .9, "Configuration C: one variable at a time", 28, True)
+textbox(sC, .6, 1.12, 12.2, .6,
+        "A and B differ in TWO ways at once - algorithm AND resolution - so their fps cannot be compared without "
+        "compounding explanations. C is exactly B's algorithm on A's own 1920x1080 stereo pair (out 960x540). "
+        "A->C isolates the algorithm; C->B isolates resolution. Golden 0f0961d623009df5, every row bit-exact.",
+        12, False, MUTED)
+
+CROWS = [
+ ("NVIDIA RTX 5090",             "GPU",   11.96, 13870, "1.32"),
+ ("NVIDIA Thor",                 "GPU",   56.7,   2928, "1.26"),
+ ("NVIDIA Orin AGX",             "GPU",   96.9,   1711, "1.33"),
+ ("Cortex-A720 x8",              "CPU",  239.6,    692, "1.01  <- see note"),
+ ("Cortex-A78C x8 (6 threads)",  "CPU",  291.8,    569, "1.38"),
+ ("Mali-G720 (10 CU)",           "GPU",  509.4,    326, "1.34"),
+ ("Cortex-A78C x1",              "CPU",  595.3,    279, "1.34"),
+ ("Cortex-A720 x1",              "CPU",  643.1,    258, "1.37"),
+ ("Cortex-A55 x6",               "CPU",  844.8,    196, "1.32"),
+ ("Cortex-A55 x1",               "CPU", 2954.0,     56, "1.34"),
+ ("Mali-G310 (1 CU)",            "GPU", 3657.0,     45, "1.35"),
+ ("scalar reference",            "REF",18020.0,    9.2, "1.26"),
+]
+tblC = sC.shapes.add_table(len(CROWS)+1, 5, Inches(.6), Inches(2.0), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.8, 1.0, 2.0, 2.2, 3.1)): tblC.columns[i].width = Inches(w)
+for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.26)
+for c, t in enumerate(("processing unit", "class", "runtime", "MDE/s (work)", "xB  (pixels predict 1.35x)")):
+    cell = tblC.cell(0, c); cell.text = t
+    pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
+    pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
+    cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
+for rr_, (lab, cls, ms, mdev, xb) in enumerate(CROWS, start=1):
+    for c, t in enumerate((lab, cls, f"{ms:,.1f} ms", f"{mdev:,}" if mdev >= 10 else f"{mdev}", xb)):
+        cell = tblC.cell(rr_, c); cell.text = str(t)
+        pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
+        run.font.size = Pt(10.5); run.font.color.rgb = INK
+        run.font.bold = (c in (0, 3))
+        if c == 1: run.font.color.rgb = ACC[cls]; run.font.bold = True
+
+textbox(sC, .6, 5.55, 12.2, .9,
+        "Two clean statements on the 5090, one knob each:  A -> C (same input images, algorithm swap): "
+        "3.46 -> 11.96 ms - the two-scale 8-path algorithm costs ~3.5x the single-scale 4-path one.  "
+        "C -> B (same algorithm, 1080 -> 800 rows): 11.96 -> 9.08 ms - the smaller frame buys back exactly "
+        "its pixel share.", 12.5, True, INK)
+textbox(sC, .6, 6.5, 12.2, .8,
+        "The exception is the finding: the A720 CLUSTER runs C at B's wall-clock (1.01x) while its single core "
+        "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
+        "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 11.5, False, INK)
+textbox(sC, .6, 7.25, 12.2, .3,
+        "Hexagon NSP row pending (contributed kernels). A78C cells are medians of repeated invocations on that bimodal board.",
+        10, False, MUTED)
+
 # ---------------- Configuration B: one slide per unit ----------------
 # Same treatment as the primary configuration: the arithmetic that produced the
 # number, then what the measurement means. MDE/s is the WORK-PERFORMED
@@ -341,7 +393,7 @@ BD = 64
 def bmde(ms): return MPX_WORK * 1e6 * BD / (ms / 1000.0) / 1e6
 
 BUNITS = [
- ("NVIDIA RTX 5090", "GPU", 9.06, "CUDA, tuned  |  second independent run: 9.59 ms (shared, unlocked card)", [
+ ("NVIDIA RTX 5090", "GPU", 9.08, "CUDA, tuned  |  canonical: median of 5 invocations x 20 frames, 0.1% spread on a quiet card", [
    "The fastest Configuration B target: 110 fps of two-scale, 8-path, weighted-P1",
    "SGM on a workload designed for a fixed-function embedded block.",
    "The port is a GENERIC path kernel: one warp owns one path line in any of the 8",
