@@ -224,8 +224,8 @@ robust and matches what the qualcomm session measured on a Hexagon NSP.
 ⚠️ **Efficiency does fall as resolution falls, but far less than we published.**
 At D=64 the corrected sweep gives 10,077 → 9,467 → 9,267 → 9,187: a **1.10×**
 fall from 1080p to VGA, not the **1.97×** that the under-sampled grid showed. The
-*direction* still agrees with the Hexagon result; the *magnitude* does not — they
-measured 962 → 631 MDE/s, a 34% fall, against our 8.8%. Claiming the two
+*direction* still agrees with the Hexagon result; the *magnitude* does not — their corrected
+figure is a 25.5% fall against our 8.8%. Claiming the two
 "reproduce" each other was too strong. Lower resolution still buys latency rather
 than throughput per disparity, but on this kernel the effect is small.
 
@@ -276,40 +276,48 @@ linearly with D** (1.06 GB at D=256), so past some D the traffic term wins.
 **Which wall you hit is a property of the machine, not the algorithm** — Thor is
 memory-bound at 145 of 249 GB/s, the Hexagon is still latency-bound at 6.8 of 28.
 
-### A prediction that was made before the data, and held
+### 🔴 A prediction that was reported as confirmed, and is not
 
-When the corrected grid weakened our resolution finding to 8.8% against the
-qualcomm session's 34%, the obvious question was why the same workload behaves so
-differently. The prediction offered to them, before either of us had data to
-settle it:
+**Retracted 2026-08-29.** When the corrected grid weakened our resolution
+penalty to 8.8% against the qualcomm session's 34%, we predicted the difference
+was mechanistic: **the size of the resolution penalty should track how
+latency-bound the part is.** They tested it within one chip — D=64 leaves the
+128-byte HVX vector half empty and so more latency-exposed; D=128 fills it — and
+reported it **confirmed**, 31.3% against 24.1%, the direction predicted.
 
-> **The size of the resolution penalty should track how latency-bound the part
-> is.** Their NSP is latency-bound at 6.8 of 28 GB/s, so per-frame fixed costs
-> dominate and shrinking the frame hurts a lot. Thor is memory-bound at 145 of
-> 249, where the same fixed cost is a small share of a much larger bill.
+**Both figures were single-invocation minima**, on a board they had established
+in the same message was bimodal. Re-run over six invocations per cell, on
+discriminating scenes, using medians:
 
-They tested it on a handle we had not considered — **not across machines, but
-within one**. At D=64 the 128-byte HVX vector is half empty, so the
-configuration is more latency-exposed per unit of useful work; at D=128 it is
-full. Same silicon, same scenes, same session, hashes checked, n=20:
-
-| configuration | 1080p → VGA | penalty |
+| | 1080p → VGA | penalty |
 |---|---|---|
-| Hexagon, D=64 (half-empty vector) | 969 → 666 MDE/s | **31.3%** |
-| Hexagon, D=128 (full vector) | 1104 → 838 MDE/s | **24.1%** |
-| Thor CUDA, D=64 (memory-bound) | 10,077 → 9,187 | **8.8%** |
+| Hexagon D=64 | 893 → 665 MDE/s | **25.5%** |
+| Hexagon D=128 | 1094 → 787 MDE/s | **28.1%** |
 
-**Monotonic in how latency-bound the configuration is**, and the direction was
-specified in advance rather than fitted afterwards.
+**The direction reverses.** And the reversal is not a finding either: 2.6 points
+against per-cell spreads of 1.5–10.3% means the two are **indistinguishable at
+this sampling**. The honest statement is that **the test does not resolve the
+prediction in either direction — it was never powered to.**
 
-⚠️ **Supporting, not proving — their words, and they are right.** Two of the
-three points are the same chip; the third differs in vendor, ISA and memory
-system simultaneously. A three-point sequence with one independent axis is
-evidence, not a law.
+⚠️ One weaker observation does point that way and is labelled rather than
+substituted: the D=128 cells are *tighter* (spreads 1.5/1.9/9.1/2.3% against
+D=64's 10.3/9.0/2.0/4.8%). Less run-to-run variance in a less latency-exposed
+configuration is consistent with the mechanism — but variance is not the
+quantity predicted, so it is a different and weaker claim.
 
-⭐ **This only became visible because the two measurements disagreed.** Had both
-parts shown a 30% penalty we would have called it reproduction and learned
-nothing about the mechanism. The disagreement carried the physics.
+🚨 **The estimator was the defect, and it is worth naming.** On multi-modal
+hardware **the minimum is not a conservative choice** — it is the statistic most
+sensitive to how many invocations happened to catch the fast mode, so it
+silently rewards whichever cell got lucky. Their 1080p minimum was one fast
+sample against five clustered 10% higher, and 1080p is the *numerator* of the
+penalty, so that single sample propagated straight into the headline. Their
+resolution penalty is therefore **25.5%, not the 31.3% published this morning**,
+and ours should be compared against that.
+
+⭐ **What survives is the cross-platform claim, which never rested on this.**
+Hexagon 25.5% against Thor 8.8% is a 2.9× gap explained by the platforms —
+latency-bound at 6.8 of 28 GB/s versus memory-bound at 145 of 249 — not by the
+within-Hexagon D comparison. That stands on its own evidence.
 
 ### A shared scene, because a D-sweep can fail to discriminate
 
