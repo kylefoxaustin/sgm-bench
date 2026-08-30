@@ -347,6 +347,7 @@ CROWS = [
  ("NVIDIA Orin AGX",             "GPU",   96.9,   1711, "1.33"),
  ("Cortex-A720 x8",              "CPU",  239.6,    692, "1.01  <- see note"),
  ("Cortex-A78C x8 (6 threads)",  "CPU",  291.8,    569, "1.38"),
+ ("Hexagon v73 NSP",             "DSP",  372.4,    446, "1.35  (and constant MDE/s vs B)"),
  ("Mali-G720 (10 CU)",           "GPU",  509.4,    326, "1.34"),
  ("Cortex-A78C x1",              "CPU",  595.3,    279, "1.34"),
  ("Cortex-A720 x1",              "CPU",  643.1,    258, "1.37"),
@@ -381,7 +382,7 @@ textbox(sC, .6, 6.5, 12.2, .8,
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 11.5, False, INK)
 textbox(sC, .6, 7.25, 12.2, .3,
-        "Hexagon NSP row pending (contributed kernels). A78C cells are medians of repeated invocations on that bimodal board.",
+        "A78C and NSP cells are medians of repeated invocations on that bimodal board (NSP: 5 invocations, 1.7% spread, unmodified Config B kernels).",
         10, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
