@@ -148,9 +148,10 @@ invocations**: at 720p its two modes are 76.5 and 64.6 ms, 18% apart, and both
 scenes hit both modes when interleaved. A larger `-n` inside one invocation
 cannot sample that, and on such hardware **the minimum is the estimator most
 sensitive to which invocations got lucky** — it cost them two retracted
-headlines in one day. Hash-gated on `46470bd7a464469d` (the generation whose
-top disparity is reachable, though by 2 pixels; the current `0bc010…` golden
-pins it at scale).
+headlines in one day. Hash-gated on `46470bd7a464469d` at audit time, and subsequently **re-verified
+against the current `0bc0102058d1505f`** — five invocations, all hashes matched,
+so their kernel's `d = D−1` boundary handling is pinned by 218,075 pixels
+rather than 2.
 
 Their audited D-sweep, medians of five invocations each:
 
@@ -580,8 +581,9 @@ the bug it existed to catch. That completes the set:
 | a check **nobody runs** | absolute per-phase ms, in the JSON since commit 1 |
 | a check that **cannot discriminate** | "D=128 must match D=64's hash" |
 | **slow-but-right** — beyond correctness gating entirely | two half-scalar phases |
+| a check **calibrated against the artefact it checks** | the discrimination checker weakened to `D−2` to match the generator's `D−2` cap — it could never fire on the defect they shared |
 
-All four read as green from outside. The last one is the only class a golden
+All five read as green from outside. The last one is the only class a golden
 file can never address even in principle.
 
 Three detectors for it, in increasing cost (due to the qualcomm session):
