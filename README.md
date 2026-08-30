@@ -173,14 +173,14 @@ oracle defines a golden, and every implementation must reproduce it byte-exactly
 | **NVIDIA RTX 5090** (CUDA) | 9.06 | **110.3** | 13,559 |
 | **NVIDIA Thor** (CUDA) | 45.1 | 22.2 | 2,723 |
 | **NVIDIA Orin AGX** (CUDA) | 72.8 | 13.7 | 1,688 |
+| 8× Cortex-A78C (NEON, 6 threads) | 211.9 | 4.72 | 580 |
+| 8× Cortex-A720 (NEON) | 238.3 | 4.20 | 516 |
 | **Hexagon v73 NSP** (HVX, 4 threads) | 276.3 | 3.62 | 445 |
 | **Mali-G720**, 10 CU (OpenCL) | 380.0 | 2.63 | 323 |
-| 8× Cortex-A720 (NEON) | 238.3 | 4.20 | 516 |
+| 1× Cortex-A78C (NEON) | 442.6 | 2.26 | 278 |
 | 1× Cortex-A720 (NEON) | 470.9 | 2.12 | 261 |
 | 6× Cortex-A55 (NEON) | 640.1 | 1.56 | 192 |
 | 1× Cortex-A55 (NEON) | 2,201 | 0.45 | 56 |
-| 8× Cortex-A78C — *oracle tier, NEON re-run pending* | 908.6 | 1.10 | 135 |
-| 1× Cortex-A78C — *oracle tier* | 2,677 | 0.37 | 46 |
 | Mali-G310, 1 CU (OpenCL) | 2,704 | 0.37 | 45 |
 | scalar reference, 1× A55 | 14,265 | 0.07 | 8.6 |
 | *NVIDIA OFA engines* | *N/A* | — | *cannot run this configuration: no 8-path, weighted-P1 or two-scale controls* |
@@ -192,7 +192,15 @@ Malis, NEON+OpenMP on the Arm cores, and the plain-C oracle as the floor. The
 CUDA port lacks the primary kernel's path-pairing pass, so its rows are the
 conservative side of what those GPUs can do. The Hexagon row is the tuned HVX port
 (median of five invocations, 0.75% spread, independently re-verified); the A78C
-rows currently run the oracle and will move to the NEON tier.
+rows are the same NEON tier as the other Arm cores (medians of five invocations
+on a board measured bimodal at ~9% — medians, not minima).
+
+Worth noting because an earlier reading got it wrong: with the A78C briefly at
+the *oracle* tier the NSP appeared to lead the CPU cluster 3.29× on this
+configuration — a cross-**tier** comparison wearing a platform comparison's
+clothes. At matched tiers Configuration B looks like Configuration A: the
+six-thread cluster leads one NSP ~1.3× on both. Per *engine* the NSP holds its
+win — one NSP beats one A78C core 1.60× here (442.6 / 276.3).
 
 ## On real stereo imagery
 

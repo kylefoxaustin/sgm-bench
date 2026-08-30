@@ -808,6 +808,25 @@ suggested, would have shipped wrong maps with confidence. The property is "no
 quantity derived from S may assume it fits its Config-A width"; the add was one
 instance, the key another.
 
+## The tier artifact, run twice
+
+The same campaign then repeated, in miniature, the Configuration A trajectory.
+For a few hours Configuration B's record read "the NSP leads the A78C cluster
+3.29×" — tuned HVX against the untuned scalar oracle, because the oracle was the
+only thing that had been run on the A78C yet. The rows were labelled *oracle
+tier, NEON re-run pending*, and when the NEON tier ran (211.86 ms at six
+threads, hash held every run) the 3.29× didn't sharpen — it **inverted**, to a
+1.30× cluster lead. At matched tiers Configuration B ranks like Configuration A;
+what the 3.29× measured was the tier gap, not the silicon.
+
+⭐ The general form: **a cross-tier comparison is a cross-configuration
+comparison wearing a platform comparison's clothes.** It is the same defect as
+comparing D=64 against D=128 cells, only in the implementation dimension instead
+of the parameter dimension — and it is more seductive, because both numbers are
+honestly MEASURED on the platforms being named. The labelling discipline is what
+contained it: the number moved by 2.5× and inverted sign without anything being
+retracted, because the mismatched row carried its tier on its face.
+
 ## Measurement quality: dispersion, transfers, and observed thread counts
 
 Three instrument defects were fixed after review. All targets were then
