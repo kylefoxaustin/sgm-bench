@@ -1,10 +1,12 @@
 # sgm-bench
 
-**Semi-Global Matching stereo, measured across eleven processing units from
-four silicon vendors — five GPUs, three CPU classes, a DSP and two
-fixed-function stereo engines — in two configurations, with every target
-required to produce byte-identical output — plus a third configuration that
-isolates the algorithm and resolution variables one at a time.**
+**Stereo depth, benchmarked honestly.** Semi-Global Matching (SGM) — the
+classic algorithm that turns a pair of camera images into a dense depth map —
+measured across **eleven processing units from four silicon vendors** (five
+GPUs, three CPU classes, a DSP, and two fixed-function stereo engines), with
+one rule above all others: **every implementation must produce byte-identical
+output to a scalar reference, in the same run that is timed, or the timing is
+void.**
 
 ![SGM on real stereo imagery](docs/panels/motorcycle_real.png)
 
@@ -13,6 +15,20 @@ disparity map this benchmark computes from it, and the error against structured-
 light ground truth — with every processor's time for the identical, byte-exact
 result. That is the whole repo in one picture: same answer everywhere, only the
 time differs.*
+
+The measurements come in three configurations, each with its own golden:
+
+| | what it is | why it exists |
+|---|---|---|
+| **[A](#results--configuration-a)** | 1920×1080, D=64, 4 paths — the textbook SGM | the primary benchmark |
+| **[B](#configuration-b-multi-scale-8-path)** | multi-scale, 8-path, weighted penalties at 1920×800 | a harder, embedded-flavoured workload |
+| **[C](#configuration-c-one-variable-at-a-time)** | B's exact algorithm at A's 1920×1080 input | isolates algorithm vs resolution, one variable at a time |
+
+B and C are one algorithm at two input sizes; if that is the story you want,
+`docs/sgm-two-resolutions.pptx` presents them exactly that way (fps-first, with
+`docs/run1080_fps.png` and `docs/run800_fps.png`). New here? Read
+[Why SGM is hard](#why-sgm-is-hard), skim the Configuration A table, then jump
+to [Quick start](#quick-start) to run it on your own board.
 
 ---
 
@@ -53,9 +69,10 @@ bottom is the floor the whole exercise is measured against — the fastest bar i
 ## Results — Configuration A
 
 The primary configuration: **1920×1080, D=64, 4 paths, 9×7 census**, dense
-full-resolution output. MEASURED; full provenance in `REPORT.md`. (A second,
-embedded-flavoured configuration is measured on the same roster —
-[Configuration B](#configuration-b-multi-scale-8-path) below.)
+full-resolution output. MEASURED; full provenance in `REPORT.md`.
+(Configurations [B](#configuration-b-multi-scale-8-path) and
+[C](#configuration-c-one-variable-at-a-time) below measure a second, harder
+workload on the same roster.)
 
 | target | class | threads | ms | **MDE/s** | DRAM GB/s ‡ | per-core |
 |---|---|---|---|---|---|---|
@@ -353,6 +370,12 @@ Configuration B builds as standalone binaries:
     ./sgm_ms data/multiscale/left.pgm data/multiscale/right.pgm \
         -g data/multiscale/golden_ms.pgm -t $(nproc)
 
+The same binary runs Configuration C — B's algorithm on the 1920×1080 scene —
+by pointing it at the other inputs and golden:
+
+    ./sgm_ms data/synthetic/left.pgm data/synthetic/right.pgm \
+        -g data/multiscale/golden_ms_1080.pgm -t $(nproc)
+
 Harness flags: `-o out.pgm`, `-g golden.pgm`, `-t threads`, `-w warmup`,
 `-n timed`, `-j results.json`, `--board name`. Timing is the median of `-n`
 runs; p95 and min are also recorded.
@@ -463,7 +486,9 @@ the freedom is worth more as permission not to worry than as an optimisation.
     data/shared/     the cross-platform D=64/128/256 scene and its goldens
     data/multiscale/ Configuration B scene and golden
     data/real/       Middlebury-derived real-imagery scene and ground truth
-    docs/            results chart, panels, and the generated deck
+    docs/            results charts, panels, and the generated decks
+                     (sgm-results.pptx = full A/B/C deck; sgm-two-resolutions.pptx
+                      = B+C as one workload at two input sizes, fps-first)
     REPORT.md        the measurement record, with provenance on every number
 
 `colmajor/` and `hvx/` were contributed by a collaborating session working on
