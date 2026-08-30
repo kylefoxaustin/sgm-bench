@@ -54,6 +54,15 @@ extern "C" {
 #if (SGM_D % WARP) != 0
 #error "sgm_cuda_opt requires SGM_D to be a multiple of 32"
 #endif
+#if SGM_PATHS != 4
+/* This kernel implements FOUR paths. SGM_PATHS=8 used to compile silently and
+ * compute four anyway -- the diagonal kernels do not exist -- so a build asking
+ * for eight got a correct-looking four-path answer with an eight-path label.
+ * Regenerating the golden would have caught it, but this repo argues elsewhere
+ * that a compile-time refusal beats a silently wrong result, and did not apply
+ * that to itself here. */
+#error "sgm_cuda_opt implements 4 paths only; SGM_PATHS=8 has no diagonal kernels"
+#endif
 
 #define CK(v) do { cudaError_t e_ = (v); if (e_ != cudaSuccess) { \
     fprintf(stderr, "CUDA %s:%d %s\n", __FILE__, __LINE__, cudaGetErrorString(e_)); \

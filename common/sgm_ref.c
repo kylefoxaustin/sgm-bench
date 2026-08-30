@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sgm.h"
+#ifdef SGM_COUNT_TIES
+static long sgm_tie_pixels = 0;
+#endif
 
 #define D SGM_D
 
@@ -119,8 +122,21 @@ static int ref_run(const uint8_t *left, const uint8_t *right, int W, int H,
         int best = 0; uint16_t bv = s[0];
         for (int d = 1; d < D; d++) if (s[d] < bv) { bv = s[d]; best = d; }  /* strict: lowest d wins ties */
         disp[i] = (uint8_t)best;
+#ifdef SGM_COUNT_TIES
+        /* How many pixels actually HAVE a tied minimum? That count is the entire
+         * evidence pinning "lowest d wins ties" -- a rule the spec calls
+         * hash-critical and which every target must share. On the synthetic
+         * scene it was 17 pixels in 2,073,600: fragile insurance. */
+        { int ties = 0;
+          for (int d = 0; d < D; d++) if (s[d] == bv) ties++;
+          if (ties > 1) sgm_tie_pixels++; }
+#endif
     }
     double t4 = now_ms();
+#ifdef SGM_COUNT_TIES
+    fprintf(stderr, "TIES: %ld of %zu pixels (%.4f%%) have a tied minimum\n",
+            sgm_tie_pixels, N, 100.0 * sgm_tie_pixels / (double)N);
+#endif
 
     if (t) { t->census_ms = t1 - t0; t->cost_ms = t2 - t1; t->aggregate_ms = t3 - t2; t->argmin_ms = t4 - t3; }
     free(cl); free(cr); free(C); free(S); free(La); free(Lb);

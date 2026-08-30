@@ -98,6 +98,36 @@ trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ---
 
+## On real stereo imagery
+
+Every target above is also verified on a **real calibrated stereo capture** —
+Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical golden
+`e8a95242882013f0`:
+
+| target | ms | MDE/s |
+|---|---|---|
+| NVIDIA RTX 5090 | 3.32 | 57,137 |
+| NVIDIA Thor | 15.94 | 11,901 |
+| NVIDIA Orin AGX | 23.91 | 7,934 |
+| 8× Cortex-A720 | 112.44 | 1,687 |
+| Mali-G720 (10 CU) | 296.17 | 640 |
+| 6× Cortex-A55 | 590.50 | 321 |
+| Mali-G310 (1 CU) | 2340.17 | 81 |
+
+![SGM on real stereo imagery](docs/panels/motorcycle_real.png)
+
+Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**,
+scoring the leftmost D columns as excluded because `x−d < 0` has no
+correspondent. Those figures were **independently reproduced by another party's
+implementation on hardware we have never touched** — they scored against the
+ground truth themselves rather than citing ours, and agreed to 0.05 points.
+
+⭐ **Real imagery is a better acceptance test, not merely a more realistic one.**
+It pins the tie-break rule **720× harder**: 14,417 pixels have a tied minimum
+here against **20** on the synthetic scene. "Lowest d wins ties" is
+hash-critical — every target must break ties identically — and it was resting on
+twenty pixels.
+
 ## Measurement quality
 
 Every figure here is a median with its spread stated. Dedicated boards measure
