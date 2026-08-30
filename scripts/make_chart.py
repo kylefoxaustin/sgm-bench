@@ -17,7 +17,7 @@ from matplotlib.patches import Patch
 # board was under another session's lease, so those are left blank rather than
 # guessed -- an empty field beats a plausible number.
 DATA = [
-    ("NVIDIA RTX 5090 GPU",     "GPU",   3.55, 37383),
+    ("NVIDIA RTX 5090 GPU",     "GPU",   3.46, 38356),
     ("NVIDIA Thor GPU",         "GPU",  13.19, 10062),
     ("NVIDIA Orin AGX GPU",     "GPU",  23.28,  5700),
     ("Cortex-A720 x8 @2.2-2.5GHz","CPU", 51.70,  2569),

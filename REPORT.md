@@ -15,7 +15,7 @@ fastest published Arm-CPU SGM, bit-exact, at MATCHED D and matched path
 count.** (Our D=64 figure is 2,569, but the published comparator is a D=128
 number, so the matched pair is the only honest ratio.) That remains the headline because it is the
 *CPU* result and the literature comparison is against CPUs; an RTX 5090 doing
-37,383 MDE/s through CUDA now sits above it in the table, and is a different
+38,356 MDE/s through CUDA now sits above it in the table, and is a different
 claim about different silicon.
 
 Bit-exact means byte-identical to a scalar reference implementation, verified
@@ -142,11 +142,12 @@ the *evidence* went from partial to complete, which is the point. Their D=128
 figure, 238.89 ms / 1111 MDE/s (`fa2238cc8a87af3d`), was always on that scene.
 
 § **Hexagon row is a different implementation** — an independent HVX/FastRPC
-port written by the qualcomm session, not this repository's NEON code. What is
-shared is the *specification and the acceptance test*: identical D, paths,
-census window, penalties, and the same golden hash `46470bd7a464469d`, held at
-1, 2, 4 and 6 DSP threads, with inputs sha256-verified on the board. MEASURED
-on their hardware; reproduced here by trust in that hash, not by my own run.
+port by the qualcomm session, not this repository's code. Its 136.9 ms / 969
+figure is measured on **their `data/wide1080` scene** (hash `33b80d5d35e0fb9b`,
+all 64 disparities winning somewhere), not on this repo's synthetic pair — the
+one row in the table whose golden differs, kept because that scene's evidence is
+*stronger* than the shared one's was when the number was taken. n=20, and every
+single-invocation figure from that board carries the ±10–18% noted above.
 
 ¶ **CUDA rows are a deliberate one-for-one port of `mali_cl/sgm.cl`**, not a
 rewrite: that kernel was already verified bit-exact on two Mali parts, so
@@ -643,7 +644,7 @@ phase:
 
 | GPU | aggregate | achieved | ceiling | utilisation | MDE/s | MDE/s per GB/s |
 |---|---|---|---|---|---|---|
-| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 37,383 | 27.0 |
+| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 38,356 | 27.7 |
 | Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,062 | 40.5 |
 | Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 | 32.5 |
 
@@ -915,7 +916,7 @@ checked for it.**
 
 | golden | old hash | new hash | top disparity |
 |---|---|---|---|
-| primary D=64 | `b1b407b5949f0cc1` | **`46470bd7a464469d`** | 44 → **63** |
+| primary D=64 | `b1b407b5949f0cc1` | `46470bd7a464469d` → **`0bc0102058d1505f`** | 44 → 63 → **63 winning at scale** |
 | shared D=64 | `d98d7b0718e2f8b9` | **`4518557a40d1b500`** | → 63 |
 | shared D=128 | `97da516d22851e0c` | **`3d99f1c7e392c712`** | → 127 |
 | shared D=256 | `cb492999e5700840` | **`6c38c42dc67b4d33`** | 187 → **254** |

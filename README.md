@@ -44,7 +44,7 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 
 | target | class | threads | ms | **MDE/s** | per-core |
 |---|---|---|---|---|---|
-| **NVIDIA RTX 5090 GPU** (Blackwell, 170 SM, CUDA) | GPU | — | 3.6 | **37,383** | — |
+| **NVIDIA RTX 5090 GPU** (Blackwell, 170 SM, CUDA) | GPU | — | 3.46 | **38,356** | — |
 | **NVIDIA Thor GPU** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | — |
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | — |
 | 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 423 |
@@ -57,10 +57,18 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | 84 |
 | Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | — |
 | scalar reference, 1× A55 | floor | 1 | 9188.0 | 14.4 | — |
+| *NVIDIA OFA on Thor* † | fixed-fn | — | *9.4 (D=128)* | *28,402* | — |
+| *NVIDIA OFA on Orin AGX* † | fixed-fn | — | *72.6 (D=128)* | *3,654* | — |
+| *NVIDIA OFA on RTX 5090* † | fixed-fn | — | *stereo mode removed* | — | — |
+
+† Dedicated stereo engines measured beside the GPUs they share a die with —
+**throughput only, not bit-exact to the golden** (VPI's SGM is NVIDIA's own
+implementation). On Blackwell the stereo mode returns `UNSUPPORTED_FEATURE`;
+details under *Dedicated stereo hardware* below.
 
 Thor's peak across the D sweep is **12,138 MDE/s at D=128**; it falls back to
 9,409 at D=256, where S traffic (1.06 GB) overtakes the amortisation gain. **The
-5090 shows no such reversal** — 37,383 / 64,880 / 74,957 MDE/s at D=64/128/256 —
+5090 shows no such reversal** — 38,356 / 60,932 / 76,248 MDE/s at D=64/128/256 —
 which is what the mechanism predicts on a part with 5.6× the bandwidth.
 
 ### Resolution and disparity
@@ -78,7 +86,7 @@ streaming-copy probe on each part:
 
 | GPU | aggregate | achieved | ceiling | utilisation | MDE/s |
 |---|---|---|---|---|---|
-| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 37,383 |
+| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 38,356 |
 | Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,062 |
 | Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 |
 
@@ -142,11 +150,11 @@ implementation on hardware we have never touched** — against the ground truth
 rather than against our map — agreeing to 0.05 points on all three metrics. The
 current scene's figures are ours alone so far.
 
-⭐ **Real imagery is a better acceptance test, not merely a more realistic one.**
-It pins the tie-break rule **720× harder**: 14,417 pixels have a tied minimum
-here against **20** on the synthetic scene. "Lowest d wins ties" is
-hash-critical — every target must break ties identically — and it was resting on
-twenty pixels.
+⭐ The real scene is the **accuracy** reference and pins the hash-critical
+tie-break rule **720× harder** than synthetic (14,417 tied-minimum pixels
+against 20). The **synthetic** goldens carry the top-of-range correctness role —
+the real scene's true disparities stop at 119.8, so it cannot test truncation
+near d=127 and is not used as a gate there.
 
 ## Measurement quality
 
@@ -364,8 +372,8 @@ Things that cost real time here, recorded so they cost you less:
 - 🚨 **A thread-count flag can be inert and still be reported.** OpenMP takes its
   count from the environment, so a `-t` argument an implementation discards will
   still appear in the results table and the JSON — a row *labelled* single-thread
-  holding an all-core timing. Read the count back from inside the parallel
-  region, and note the direction of the error: it shortens the run that was asked
+  holding an all-core timing. Read the count back with `omp_get_num_threads()` from *inside* the parallel
+  region — `omp_get_max_threads()` merely echoes the request — and note the direction of the error: it shortens the run that was asked
   to be slow, so it inflates single-thread baselines and flatters whatever they
   are compared against. There is no correction factor, because the magnitude is
   each machine's own thread scaling.

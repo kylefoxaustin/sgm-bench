@@ -36,6 +36,9 @@
  * it (62 + 200 = 262), which is why P2 is 192 here.
  */
 #include "sgm.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include "census_neon.h"
 #include "hamming_neon.h"
 #include <stdlib.h>
@@ -169,6 +172,11 @@ static int a55_run(const uint8_t *left, const uint8_t *right, int W, int H,
 #endif
         const int BW = SGM_BW;
 #ifdef _OPENMP
+    if (t) { t->threads_used = 0; t->transfer_ms = -1; }
+#ifdef _OPENMP
+#pragma omp parallel
+    { if (t && omp_get_thread_num() == 0) t->threads_used = omp_get_num_threads(); }
+#endif
 #pragma omp parallel
 #endif
         {

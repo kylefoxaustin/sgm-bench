@@ -28,7 +28,7 @@ for D in 32 64 128; do
 
     # golden: scalar reference, this D, this resolution
     gcc -O2 -Wall -std=gnu11 -Icommon -DSGM_D=$D -DCFLAGS_STR='"ref"' -DGIT_SHA='"sweep"' \
-        -o bin/sgm_ref_d common/sgm_ref.c common/harness.c common/util.c 2>/dev/null \
+        -o bin/sgm_ref_d common/sgm_ref.c common/harness.c common/util.c -lm 2>/dev/null \
         || { echo "  ref build failed"; continue; }
     ./bin/sgm_ref_d data/sweep/left.pgm data/sweep/right.pgm -w 0 -n 1 \
         -o data/sweep/golden.pgm --no-roofline >/dev/null 2>&1 \
@@ -42,7 +42,7 @@ for D in 32 64 128; do
         && gcc -O2 -Wall -std=gnu11 -Icommon -DSGM_D=$D -DCFLAGS_STR='"nvcc -O3"' \
                -DGIT_SHA='"sweep"' -c common/harness.c -o /tmp/swh.o 2>/dev/null \
         && gcc -O2 -Icommon -c common/util.c -o /tmp/swu.o 2>/dev/null \
-        && nvcc -o bin/sgm_sweep /tmp/swh.o /tmp/swu.o /tmp/sw.o 2>/dev/null \
+        && nvcc -o bin/sgm_sweep /tmp/swh.o /tmp/swu.o /tmp/sw.o -lm 2>/dev/null \
         || { echo "  impl build failed"; continue; }
 
     # A failed cell must STOP the sweep, not scroll past it. This used to end in

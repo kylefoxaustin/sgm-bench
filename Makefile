@@ -38,7 +38,7 @@ bin:
 	mkdir -p bin
 
 bin/sgm_ref: common/sgm_ref.c $(HARNESS) $(COMMON) common/sgm.h common/sgm_params.h | bin
-	$(CC) $(REF_CFLAGS) $(DEFS) -DCFLAGS_STR='"$(REF_CFLAGS)"' -o $@ common/sgm_ref.c $(HARNESS) $(COMMON)
+	$(CC) $(REF_CFLAGS) $(DEFS) -DCFLAGS_STR='"$(REF_CFLAGS)"' -o $@ common/sgm_ref.c $(HARNESS) $(COMMON) -lm
 
 bin/gen_synthetic: common/gen_synthetic.c common/sgm_params.h | bin
 	$(CC) -O2 -Wall -Icommon -o $@ common/gen_synthetic.c
@@ -51,7 +51,7 @@ bin/baseline_census: a55/baseline/sgm_census_cost.c | bin
 
 define IMPL_RULE
 bin/sgm_$(1): $$(IMPL_$(1)_SRCS) $$(HARNESS) $$(COMMON) common/sgm.h common/sgm_params.h | bin
-	$$(CC) $$(IMPL_CFLAGS) $$(DEFS) -DCFLAGS_STR='"$$(IMPL_CFLAGS)"' -o $$@ $$(IMPL_$(1)_SRCS) $$(HARNESS) $$(COMMON)
+	$$(CC) $$(IMPL_CFLAGS) $$(DEFS) -DCFLAGS_STR='"$$(IMPL_CFLAGS)"' -o $$@ $$(IMPL_$(1)_SRCS) $$(HARNESS) $$(COMMON) -lm
 endef
 $(foreach i,$(IMPLS),$(eval $(call IMPL_RULE,$(i))))
 

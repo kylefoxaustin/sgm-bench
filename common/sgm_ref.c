@@ -126,7 +126,7 @@ static int ref_run(const uint8_t *left, const uint8_t *right, int W, int H,
         /* How many pixels actually HAVE a tied minimum? That count is the entire
          * evidence pinning "lowest d wins ties" -- a rule the spec calls
          * hash-critical and which every target must share. On the synthetic
-         * scene it was 17 pixels in 2,073,600: fragile insurance. */
+         * scene it measures 20 pixels in 2,073,600: fragile insurance. */
         { int ties = 0;
           for (int d = 0; d < D; d++) if (s[d] == bv) ties++;
           if (ties > 1) sgm_tie_pixels++; }

@@ -164,7 +164,8 @@ int main(int argc, char **argv) {
      * naive (int)(0.95 n) is one rank high -- at n <= 20 it returns the MAXIMUM
      * while printing "p95". */
     int p95i = (int)((timed * 95 + 99) / 100) - 1;
-    if (p95i < 0) p95i = 0; if (p95i >= timed) p95i = timed - 1;
+    if (p95i < 0) p95i = 0;
+    if (p95i >= timed) p95i = timed - 1;
     double p95 = ms[p95i];
     /* DISPERSION. A median with no spread beside it is how an 80%-wrong cell
      * survived publication here. Note `sd` is RMS deviation about the MEDIAN
@@ -221,7 +222,8 @@ int main(int argc, char **argv) {
                    "\"census_ms\":%.3f,\"cost_ms\":%.3f,\"aggregate_ms\":%.3f,\"argmin_ms\":%.3f,"
                    "\"hash\":\"%016llx\",\"golden_match\":%d,\"roofline_ok\":%d,\"cflags\":\"%s\",\"git\":\"%s\",\"ts\":\"%s\"}\n",
                 SGM_IMPL.name, board, W, H, SGM_D, SGM_PATHS, SGM_CENSUS_W, SGM_CENSUS_H, SGM_P1, SGM_P2,
-                threads_actual, threads, mask, warm, timed, med, p95, mn, sd,
+                st.threads_used > 0 ? st.threads_used : threads_actual, threads,
+                mask, warm, timed, med, p95, mn, sd,
                 spread_hi, spread_lo, unstable, st.transfer_ms, st.threads_used, fps, mpix,
                 st.census_ms, st.cost_ms, st.aggregate_ms, st.argmin_ms,
                 (unsigned long long)hash, golden_match, rl_armed ? !rl_fail : -1, CFLAGS_STR, GIT_SHA, ts);

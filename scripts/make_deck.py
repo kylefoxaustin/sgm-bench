@@ -26,7 +26,7 @@ UNITS = [
    "Same kernel, same changes: 3.10x over the naive port (72.27 -> 23.28 ms).",
    "Bit-exact on the first run, before any tuning — the payoff for porting a",
    "verified OpenCL kernel one-for-one instead of writing a new one."]),
- ("NVIDIA RTX 5090 GPU","GPU",   3.55, "Blackwell, 170 SM, discrete, 32 GB, driver 580.173  |  D=128: 4.09 ms  ·  D=256: 7.08 ms", [
+ ("NVIDIA RTX 5090 GPU","GPU",   3.46, "Blackwell, 170 SM, discrete, 32 GB, driver 580.173  |  D=128: 4.09 ms  ·  D=256: 7.08 ms", [
    "The fastest target measured: 37,383 MDE/s at D=64, 282 fps at 1080p.",
    "64,880 MDE/s at D=128 and 74,957 at D=256 -- and unlike Thor it shows NO",
    "reversal at D=256, which is what the traffic mechanism predicts on a part",
@@ -126,15 +126,23 @@ def textbox(sl, x, y, w, h, text, size, bold=False, color=INK, align=PP_ALIGN.LE
 
 # ---------------- slide 1: summary ----------------
 s1 = prs.slides.add_slide(blank)
-textbox(s1, .6, .32, 12.2, .9, "Semi-Global Matching across nine execution targets", 28, True)
+textbox(s1, .6, .32, 12.2, .9, "Semi-Global Matching across ten processors", 28, True)
 textbox(s1, .6, 1.12, 12.2, .5,
-        "1920x1080  ·  D=64  ·  4 paths  ·  9x7 census  ·  every row bit-exact to golden 46470bd7a464469d",
+        "1920x1080  ·  D=64  ·  4 paths  ·  9x7 census  ·  every row bit-exact to golden 0bc0102058d1505f",
         14, False, MUTED)
 
-SINGLE = [("Cortex-A720 x1 @2.5GHz","CPU",313.60),("Cortex-A78C x1","CPU",332.22),
+SINGLE = [("Cortex-A720 x1 @2.5GHz","CPU",313.60),("Cortex-A78C x1","CPU",336.11),
           ("Cortex-A55 x1 @1.8GHz","CPU",1588.74)]
+# Dedicated stereo engines, shown WITH the processors they share a die with.
+# Throughput only -- not bit-exact to the golden; the 5090's stereo mode is
+# measured as removed (UNSUPPORTED_FEATURE at every grid size).
+
 rows = [u for u in UNITS] + [(l,c,ms,"",[]) for l,c,ms in SINGLE]
 rows = sorted(rows, key=lambda r: (r[2] is None, r[2] or 0))
+# The OFA entries already live in UNITS (they have their own slides); mark them
+# so the summary table computes MDE/s at THEIR D (128) instead of D=64, and
+# labels them throughput-only rather than "Nx faster than the scalar ref".
+HWNAMES = {"NVIDIA Thor OFA": 128, "NVIDIA Orin AGX OFA": 128}
 tbl = s1.shapes.add_table(len(rows)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.5, 1.1, 1.7, 1.5, 1.9, 2.4)): tbl.columns[i].width = Inches(w)
 for r in range(len(rows)+1): tbl.rows[r].height = Inches(0.27)
@@ -146,7 +154,14 @@ for c, t in enumerate(hdr):
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 base = 9188.0
 for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
-    vals = ((lab, cls, "—" if ms is None else f"{ms:,.2f} ms",
+    hwd = HWNAMES.get(lab)
+    if lab in HWNAMES and ms is None:
+        vals = (lab, cls, "stereo mode removed", "—", "—", "UNSUPPORTED_FEATURE")
+    elif lab in HWNAMES:
+        vals = (lab, cls, f"{ms:,.2f} ms (D={hwd})", f"{1000/ms:,.1f}",
+                f"{W*H*hwd/ms/1000:,.0f}", "throughput only")
+    else:
+        vals = ((lab, cls, "—" if ms is None else f"{ms:,.2f} ms",
              "—" if ms is None else f"{1000/ms:,.1f}",
              "—" if ms is None else f"{mde(ms):,.0f}",
              "not yet measured" if ms is None else f"{base/ms:,.0f}x faster"))
@@ -158,17 +173,17 @@ for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
         if c == 1:
             run.font.color.rgb = ACC[cls]; run.font.bold = True
 # headline callouts, in the space under the table
-CALLOUTS = [("699x", "faster than the scalar reference,\nwith byte-identical output"),
+CALLOUTS = [("2,655x", "faster than the scalar reference,\nwith byte-identical output"),
             ("10.4x", "the fastest published Arm-CPU SGM,\nat matched D and matched path count"),
             ("9 / 4 / 3 / 1", "targets / vendors / programming models\n/ one golden hash")]
 for i, (big, small) in enumerate(CALLOUTS):
     x = .6 + i * 4.1
-    textbox(s1, x, 6.05, 3.9, .6, big, 30, True, ACC["GPU"] if i == 0 else INK)
-    tf = textbox(s1, x, 6.6, 3.9, .8, small.split("\n")[0], 12, False, MUTED)
+    textbox(s1, x, 6.35, 3.9, .6, big, 30, True, ACC["GPU"] if i == 0 else INK)
+    tf = textbox(s1, x, 6.85, 3.9, .8, small.split("\n")[0], 12, False, MUTED)
     pp = tf.add_paragraph(); rr = pp.add_run(); rr.text = small.split("\n")[1]
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
-textbox(s1, .6, 7.15, 12.2, .35,
+textbox(s1, .6, 7.28, 12.2, .3,
         "MDE/s = W x H x D / runtime.  Valid for comparing implementations at a FIXED configuration; "
         "it is the wrong unit for CHOOSING one, because the optics fix D.", 10, False, MUTED)
 

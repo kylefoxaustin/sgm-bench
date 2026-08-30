@@ -25,8 +25,8 @@
  *   shuffles per step; every interior neighbour is a register already in hand.
  *
  *   NO __syncthreads ANYWHERE IN THE RECURRENCE. Warps are independent
- *   scanlines, so there is nothing to synchronise. 8 warps per block is purely
- *   an occupancy choice, not a communication one.
+ *   scanlines, so there is nothing to synchronise. warps-per-block (WPB, default 4;
+ *   swept 2/4/8 within 1%) is purely an occupancy choice, not a communication one.
  *
  * ⚠️ WARP-SYNCHRONOUS CODE NEEDS EXPLICIT MASKS. Every shuffle passes 0xffffffff
  * and every warp is fully populated by construction (blockDim.x == 32). This is
@@ -297,6 +297,13 @@ static int initW, initH, ready;
 
 static int setup(int W, int H)
 {
+    /* Re-setup on a resolution change frees the old buffers first; this used to
+     * leak them, which mattered only for in-process sweeps but was still a leak. */
+    if (ready) {
+        cudaFree(d_l); cudaFree(d_r); cudaFree(d_cl); cudaFree(d_cr);
+        cudaFree(d_S); cudaFree(d_SC); cudaFree(d_disp);
+        ready = 0;
+    }
     const size_t N = (size_t)W * H;
     cudaDeviceProp p; int dev = 0;
     CK(cudaGetDevice(&dev)); CK(cudaGetDeviceProperties(&p, dev));
@@ -339,10 +346,9 @@ static int cuda_run(const uint8_t *left, const uint8_t *right, int W, int H,
     /* each pair: second direction into scratch, first direction commits both */
     ko_horiz<M_SCRATCH><<<gh, wb>>>(d_cl, d_cr, d_S, d_SC, W, H, -1);
     ko_horiz<M_STORE  ><<<gh, wb>>>(d_cl, d_cr, d_S, d_SC, W, H, +1);
-    if (SGM_PATHS > 2) {
-        ko_vert<M_SCRATCH><<<gw, wb>>>(d_cl, d_cr, d_S, d_SC, W, H, -1);
-        ko_vert<M_ACCUM  ><<<gw, wb>>>(d_cl, d_cr, d_S, d_SC, W, H, +1);
-    }
+    /* SGM_PATHS is pinned to 4 by the #error above, so the verticals always run. */
+    ko_vert<M_SCRATCH><<<gw, wb>>>(d_cl, d_cr, d_S, d_SC, W, H, -1);
+    ko_vert<M_ACCUM  ><<<gw, wb>>>(d_cl, d_cr, d_S, d_SC, W, H, +1);
     CK(cudaDeviceSynchronize());
     double t2 = now_ms();
 

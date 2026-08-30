@@ -90,11 +90,17 @@ static int cl_run(const uint8_t *left, const uint8_t *right, int W, int H,
     if (!ready || W != initW || H != initH) { if (setup(W, H)) return -1; }
     const size_t N = (size_t)W * H;
 
-    double t0 = now_ms();
+    /* Transfers and the 265 MB S zero-fill are timed SEPARATELY. They used to
+     * sit inside census_ms (and the D2H read inside argmin_ms), so every
+     * per-phase figure derived from this host was phase-plus-copy -- the same
+     * defect the CUDA host had, fixed there and not here until 2026-08-29. */
+    double tA = now_ms();
     e = clEnqueueWriteBuffer(q, b_l, CL_FALSE, 0, N, left,  0, 0, 0); CK(e, "wr l");
     e = clEnqueueWriteBuffer(q, b_r, CL_FALSE, 0, N, right, 0, 0, 0); CK(e, "wr r");
     cl_uchar zero = 0;
     e = clEnqueueFillBuffer(q, b_S, &zero, 1, 0, N * SGM_D * 2, 0, 0, 0); CK(e, "fill S");
+    clFinish(q);
+    double t0 = now_ms();
 
     /* census on both images */
     size_t g2[2] = { ((size_t)W + 15) / 16 * 16, ((size_t)H + 3) / 4 * 4 };
@@ -136,11 +142,14 @@ static int cl_run(const uint8_t *left, const uint8_t *right, int W, int H,
     clSetKernelArg(k_argmin, 2, sizeof W, &W);
     clSetKernelArg(k_argmin, 3, sizeof H, &H);
     e = clEnqueueNDRangeKernel(q, k_argmin, 2, 0, g2, l2, 0, 0, 0); CK(e, "argmin");
-    e = clEnqueueReadBuffer(q, b_disp, CL_TRUE, 0, N, disp, 0, 0, 0); CK(e, "rd disp");
+    clFinish(q);
     double t3 = now_ms();
+    e = clEnqueueReadBuffer(q, b_disp, CL_TRUE, 0, N, disp, 0, 0, 0); CK(e, "rd disp");
+    double tB = now_ms();
 
     if (t) { t->census_ms = t1 - t0; t->cost_ms = -1;
-             t->aggregate_ms = t2 - t1; t->argmin_ms = t3 - t2; }
+             t->aggregate_ms = t2 - t1; t->argmin_ms = t3 - t2;
+             t->transfer_ms = (t0 - tA) + (tB - t3); t->threads_used = 0; }
     return 0;
 }
 

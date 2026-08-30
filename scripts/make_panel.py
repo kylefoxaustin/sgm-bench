@@ -17,9 +17,18 @@ import sys, numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 def pgm(p):
-    d = open(p,'rb').read(); i = d.index(b'255\n')+4
-    hdr = d[:i].split()
-    w, h = int(hdr[1]), int(hdr[2])
+    # proper P5 header parse: index(b'255\\n') breaks if a dimension is 255
+    d = open(p,'rb').read(); tok, i = [], 2
+    while len(tok) < 3:
+        while d[i:i+1].isspace(): i += 1
+        if d[i:i+1] == b'#':
+            while d[i:i+1] != b'\n': i += 1
+            continue
+        j = i
+        while not d[j:j+1].isspace(): j += 1
+        tok.append(int(d[i:j])); i = j
+    i += 1
+    w, h, _ = tok
     return np.frombuffer(d[i:i+w*h], dtype=np.uint8).reshape(h, w)
 
 def main():
