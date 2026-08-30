@@ -328,7 +328,7 @@ CEIL = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Or
         "Cortex-A78C x8 (6 threads)": "— / n.m.", "Cortex-A78C x1": "— / n.m.",
         "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
         "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
-        "Cortex-A55 x6": "— / 13.7", "Cortex-A55 x1": "— / 13.7",
+        "Cortex-A55 x6": "8.8 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
         "Mali-G310 (1 CU)": "— / 13.7", "scalar reference": "— / 13.7"}
 for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
     bw = CEIL.get(lab, "—")
@@ -363,9 +363,9 @@ for i, (big, small) in enumerate(CALLOUTS_B):
 
 textbox(sB, .6, 7.28, 12.2, .3,
         "MDE/s (work) = both scales count: (0.384 + 1.536) Mpx x 64 / runtime. OFA rows: their OWN SGM at matched "
-        "geometry (ds=2, D=128), throughput only. ‡ DRAM = achieved / ceiling GB/s: ceilings MEASURED (same silicon as "
-        "Config A; n.m. = not measured on that board); achieved left blank -- B's per-phase byte model is not derived, "
-        "and an invented number would poison the column.",
+        "geometry (ds=2, D=128), throughput only. ‡ DRAM = achieved / ceiling GB/s. A55 cells MEASURED at the i.MX95 "
+        "DDR controller (idle-corrected, whole-run read+write) -- the 8-path multiscale pipeline drives the cluster to "
+        "64% of the chip's whole bus. Other achieved cells not yet instrumented (n.m. = ceiling unmeasured, leased board).",
         10, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
@@ -427,7 +427,7 @@ CEILC = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA O
          "Cortex-A78C x8 (6 threads)": "— / n.m.", "Cortex-A78C x1": "— / n.m.",
          "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
          "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
-         "Cortex-A55 x6": "— / 13.7", "Cortex-A55 x1": "— / 13.7",
+         "Cortex-A55 x6": "9.2 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
          "Mali-G310 (1 CU)": "— / 13.7", "scalar reference": "— / 13.7"}
 for rr_, (lab, cls, ms, mdev) in enumerate(CROWS, start=1):
     fps = 1000.0/ms
@@ -458,7 +458,7 @@ textbox(sC, .6, 6.68, 12.2, .5,
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
 textbox(sC, .6, 7.2, 12.2, .3,
         "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact. "
-        "‡ DRAM = achieved / ceiling GB/s: ceilings MEASURED (n.m. = not measured on that board); achieved blank — C's byte model is not derived.",
+        "‡ DRAM = achieved / ceiling GB/s. A55 cells MEASURED at the DDR controller (67% of the chip's bus at 6 threads); other achieved cells not yet instrumented.",
         9.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
