@@ -14,7 +14,7 @@ against a measured one without saying so.
 fastest published Arm-CPU SGM, bit-exact, at MATCHED D and matched path
 count.** (Our D=64 figure is 2,569, but the published comparator is a D=128
 number, so the matched pair is the only honest ratio.) That remains the headline because it is the
-*CPU* result and the literature comparison is against CPUs; a Jetson Thor doing
+*CPU* result and the literature comparison is against CPUs; an RTX 5090 doing
 37,383 MDE/s through CUDA now sits above it in the table, and is a different
 claim about different silicon.
 
@@ -102,7 +102,7 @@ paying the DDR round trip that dominates every implementation measured here.
 | platform | config | threads | ms | fps | Mpix/s | **MDE/s** | best per-core |
 |---|---|---|---|---|---|---|---|
 | **NVIDIA Thor** (Blackwell, 20 SM, CUDA, tuned) ¶ | D=64 | — | 13.2 | 75.35 | 156.24 | **10,062** | — |
-| NVIDIA Thor — D=128, the grid's peak ¶ | D=128 | — | 21.6 | 46.25 | 95.91 | **12,138** | — |
+| NVIDIA Thor — D=128, the grid's peak ¶ | D=128 | — | 21.65 | 46.19 | 95.78 | **12,260** | — |
 | NVIDIA Thor — naive OpenCL transliteration ¶ | D=64 | — | 35.4 | 28.26 | 58.59 | 3,750 | — |
 | **8× Cortex-A720** @2.2–2.5 GHz (Radxa O6) | D=64 | 8 | 51.7 | 19.4 | 40.14 | **2,569** | 423 |
 | 8× Cortex-A720 | D=128 | 8 | 105.9 | 9.5 | 19.59 | 2,507 | — |
@@ -327,16 +327,16 @@ any D-sweep, ours included — and it already bit this project once, when twelve
 `GOLDEN OK` lines came from a D=64 scene.
 
 `data/shared/` is therefore a published cross-platform artefact: 1920×1080, seed
-3, generated at D=256 semantics so its true disparities reach **186** and
+3, generated at D=256 semantics so its true disparities reach **254** and
 truncate distinctly at 64, 128 and 256.
 
 | artefact | sha256 (first 16) | reference hash |
 |---|---|---|
-| `left.pgm` | `3d6eda655586a028` | — |
-| `right.pgm` | `9c01b6a023c1a2c1` | — |
-| `golden_d64.pgm` | `8d36365c95a8cede` | `4518557a40d1b500` |
-| `golden_d128.pgm` | `44b5ac5a39b046a2` | `3d99f1c7e392c712` |
-| `golden_d256.pgm` | `c7c1a2a403a223ca` | `6c38c42dc67b4d33` |
+| `left.pgm` | `99b2a43de9d6dc82` | — |
+| `right.pgm` | `f8cc283345e4a596` | — |
+| `golden_d64.pgm` | `9c4ff74807b3b537` | `004d85c8288ef5b6` |
+| `golden_d128.pgm` | `fb4b612656137745` | `760646cc7238afea` |
+| `golden_d256.pgm` | `ae8df5c081dde351` | `f4d47de16696e1b7` |
 
 Goldens are from the x86-64 scalar reference; the CUDA implementation reproduces
 all three on Thor. Three distinct hashes at three D values is the property that
@@ -840,7 +840,42 @@ failure shape as the inert flag it replaced. Implementations now report
 `omp_get_num_threads()` from **inside** the parallel region, and that observed
 count is what reaches the table and the JSON.
 
-## 🔴 The acceptance model was broken, and an independent review found it
+## 🔴 A second independent review, and the off-by-one that survived the first fix
+
+A final adversarial review of the finished repo found the acceptance-model bug
+had been fixed **one step short of where the mechanism goes** — a pattern it
+identified across several fixes.
+
+**The generator pinned its top slab to `SGM_D−2`, and the checker was set to
+`D−2` to match.** So `d = D−1` — the lane where *every* implementation
+special-cases "d+1 out of range, treat as 255", i.e. the single most bug-prone
+disparity in the range — was unreachable: the D=256 golden had **zero** pixels
+there, the D=64 golden had **two**. An implementation that never searched the
+top disparity reproduced them byte-for-byte, and the checker printed PASS.
+The checker had been weakened to make the generator's output pass, instead of
+the generator being fixed to satisfy the checker.
+
+Fixed at the root this time: the generator pins to `D−1`, the checker requires
+`D−1`, and the regenerated goldens have the top disparity winning at scale —
+218,075 pixels at d=63, 84,720 at d=255. **All six local targets re-verified**
+on the new primary golden `0bc0102058d1505f`.
+
+The same review also found: the real-imagery golden's top decile "of which"
+count was set arithmetic done wrong (gt≥115 counted over the whole image, not
+intersected with the golden — 20,024, not 22,530); the roofline calibrations
+referenced a scene that no longer existed, so the gate could never arm on any
+live configuration (recalibrated at 1920×1080 D=64 on all five targets, and
+`sweep.sh` no longer passes `--no-roofline`); the sweep's documented build-cmd
+argument was dead code and a failed generator build silently reused a stale
+binary (both abort now); a latent out-of-bounds read in `store_plane` at
+SGM_D=16; the p95 index returning the maximum for n≤20 while labelled "p95";
+and roughly a dozen places where a corrected number's stale copy survived in
+another section. All fixed; the stale-copy sweep is the repo's own value-diff
+rule, which had not been applied to itself.
+
+## The original acceptance-model finding
+
+### The first finding: a golden blind to the top third of the range
 
 **Until 2026-08-29 the primary golden could not discriminate the top third of the
 disparity range.** `data/golden/synthetic.pgm` had a maximum disparity of 44 with
@@ -858,7 +893,7 @@ CUDA implementation had also been run against the `data/shared` goldens.
 slab disparity as `SGM_D/4 + rand % (SGM_D/2)`, whose maximum is `3D/4 − 1` — 47
 at D=64. The generator could never populate the top quarter of *any* range, and
 the `if (d > SGM_D-2)` clamp that followed was dead code that made the bound look
-deliberate. The shared D=256 scene topped out at 187 for the same reason.
+deliberate. The shared D=256 scene previously topped out at 187 for the same reason.
 
 ⚠️ **This project named this exact failure mode, then shipped it.** "A check that
 cannot discriminate" is documented below as one of four ways a gate reads green
@@ -983,7 +1018,7 @@ real limit than "59%" suggests.
   deliberately unoptimised — `-O2`, no SIMD, single thread — and exists to define
   the golden, not to be competitive. It is the floor, not a baseline.
 
-Also: **every timing in this report comes from one synthetic scene.** SGM's
+Also: **at the time of that review, every timing came from one synthetic scene; a real capture has since been added.** SGM's
 control flow is data-independent so the numbers should hold, but that is an
 argument, not a measurement.
 
@@ -1122,15 +1157,13 @@ Found by measurement, listed so the spec can be fixed:
 
 ## Open items
 
-- **Phase 5 (libSGM on RTX 5090)** not run — the GPU has been under another
-  session's campaign throughout.
+- **libSGM comparison on the RTX 5090** not run (our own kernel is measured
+  there; the third-party CUDA implementation is not).
 - **Power** unmeasured on every platform; the perf/W column cannot be filled
   from these boards.
 - **8-path** numbers not taken; all results are 4-path. The literature's 8→4
   reduction is ×1.45 for +0.2% error (SOURCED), so an 8-path figure would be
   roughly 0.69× these.
 - **A gcc-13+ A720 rebuild** could move the headline number in either direction.
-- **Real stereo pair** not benchmarked — all results are on the deterministic
-  synthetic pair. The spec warns against tuning on synthetic only; census
-  bit-exactness was verified on both synthetic and real image statistics, but
-  the timings are synthetic-only.
+- **Real-imagery timings** exist for one scene (Middlebury Motorcycle); the
+  headline table remains the synthetic configuration.

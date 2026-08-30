@@ -125,7 +125,10 @@ static inline void load_cost(const uint64_t *cl, const uint64_t *cr,
 #endif
 static inline void store_plane(uint8_t *p, const uint8x16_t *v)
 {
-#if SGM_NT && defined(__aarch64__)
+#if SGM_NT && defined(__aarch64__) && (SGM_D % 32) == 0
+    /* stnp writes a register PAIR, so this loop needs an even DREGS. At
+     * SGM_D=16 (legal) DREGS is 1 and v[r+1] would read out of bounds. Odd
+     * DREGS takes the plain-store path instead. */
     for (int r = 0; r < DREGS; r += 2) {
         __asm__ volatile("stnp %q0, %q1, [%2]"
                          :: "w"(v[r]), "w"(v[r + 1]), "r"(p + r * 16)
@@ -373,7 +376,10 @@ const sgm_impl SGM_IMPL = { "a55", a55_run };
 #endif
 static inline void store_plane(uint8_t *p, const uint8x16_t *v)
 {
-#if SGM_NT && defined(__aarch64__)
+#if SGM_NT && defined(__aarch64__) && (SGM_D % 32) == 0
+    /* stnp writes a register PAIR, so this loop needs an even DREGS. At
+     * SGM_D=16 (legal) DREGS is 1 and v[r+1] would read out of bounds. Odd
+     * DREGS takes the plain-store path instead. */
     for (int r = 0; r < DREGS; r += 2) {
         __asm__ volatile("stnp %q0, %q1, [%2]"
                          :: "w"(v[r]), "w"(v[r + 1]), "r"(p + r * 16)

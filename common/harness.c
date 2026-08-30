@@ -159,12 +159,17 @@ int main(int argc, char **argv) {
     if (timed == 0) { double t0 = now_ms(); SGM_IMPL.run(L, R, W, H, disp, threads, &st); ms[0] = now_ms() - t0; timed = 1; }
 
     qsort(ms, timed, sizeof(double), cmp_double);
-    double med = ms[timed / 2], p95 = ms[(int)(timed * 0.95) < timed ? (int)(timed * 0.95) : timed - 1], mn = ms[0];
+    double med = ms[timed / 2], mn = ms[0];
+    /* ceil(0.95 n) - 1: the 95th-percentile RANK on 0-based sorted data. The
+     * naive (int)(0.95 n) is one rank high -- at n <= 20 it returns the MAXIMUM
+     * while printing "p95". */
+    int p95i = (int)((timed * 95 + 99) / 100) - 1;
+    if (p95i < 0) p95i = 0; if (p95i >= timed) p95i = timed - 1;
+    double p95 = ms[p95i];
     /* DISPERSION. A median with no spread beside it is how an 80%-wrong cell
-     * survived publication here: it read p95/median 1.55 and min/median 0.65 on
-     * 12 samples and looked like a number. Both ratios are now computed, and a
-     * run whose spread exceeds --max-spread is flagged as unstable rather than
-     * quietly reported. */
+     * survived publication here. Note `sd` is RMS deviation about the MEDIAN
+     * (not the mean), chosen to pair with the median headline; it is labelled
+     * rmsd in the JSON accordingly. */
     double sd = 0; for (int i = 0; i < timed; i++) { double d = ms[i] - med; sd += d * d; }
     sd = timed > 1 ? sqrt(sd / (timed - 1)) : 0;
     double spread_hi = med > 0 ? p95 / med : 0, spread_lo = med > 0 ? mn / med : 0;
@@ -210,7 +215,7 @@ int main(int argc, char **argv) {
         time_t now = time(NULL); char ts[64]; strftime(ts, sizeof ts, "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
         fprintf(f, "{\"impl\":\"%s\",\"board\":\"%s\",\"W\":%d,\"H\":%d,\"D\":%d,\"paths\":%d,\"census\":\"%dx%d\",\"P1\":%d,\"P2\":%d,"
                    "\"threads\":%d,\"threads_requested\":%d,\"cpu_mask\":\"%s\",\"warm\":%d,\"timed\":%d,"
-                   "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"sd_ms\":%.4f,"
+                   "\"median_ms\":%.3f,\"p95_ms\":%.3f,\"min_ms\":%.3f,\"rmsd_ms\":%.4f,"
                    "\"spread_hi\":%.3f,\"spread_lo\":%.3f,\"unstable\":%d,"
                    "\"transfer_ms\":%.3f,\"threads_used\":%d,\"fps\":%.3f,\"mpix_s\":%.3f,"
                    "\"census_ms\":%.3f,\"cost_ms\":%.3f,\"aggregate_ms\":%.3f,\"argmin_ms\":%.3f,"

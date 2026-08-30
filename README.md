@@ -34,7 +34,7 @@ Three properties fall out, and they shape every implementation here:
 
 Every bar is bit-exact to the same golden hash. The scalar reference at the
 bottom is the floor the whole exercise is measured against — the fastest bar is
-**700× faster than it, computing byte-identical output**.
+**~2,600× faster than it, computing byte-identical output**.
 
 ---
 
@@ -119,7 +119,7 @@ trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ## On real stereo imagery
 
-Every target above is also verified on a **real calibrated stereo capture** —
+Seven of the targets are also verified on a **real calibrated stereo capture** —
 Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical golden
 `e8a95242882013f0`:
 
@@ -137,9 +137,10 @@ Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical gold
 
 Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**,
 scoring the leftmost D columns as excluded because `x−d < 0` has no
-correspondent. Those figures were **independently reproduced by another party's
-implementation on hardware we have never touched** — they scored against the
-ground truth themselves rather than citing ours, and agreed to 0.05 points.
+correspondent. An earlier revision of this scene was **independently scored by another party's
+implementation on hardware we have never touched** — against the ground truth
+rather than against our map — agreeing to 0.05 points on all three metrics. The
+current scene's figures are ours alone so far.
 
 ⭐ **Real imagery is a better acceptance test, not merely a more realistic one.**
 It pins the tie-break rule **720× harder**: 14,417 pixels have a tied minimum

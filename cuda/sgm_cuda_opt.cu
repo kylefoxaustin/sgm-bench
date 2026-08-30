@@ -165,11 +165,12 @@ template <int MODE>
 __device__ __forceinline__ void s_commit(unsigned short *s, unsigned char *sc,
                                          const unsigned char *L)
 {
-/* The vector width follows DPT, so every D gets one transaction per lane instead
- * of DPT scalar ones. This was DPT==2 only until 2026-08-29, which quietly
- * handicapped every measurement at D=32 and D=128: they fell back to the scalar
- * loop while D=64 alone got ushort2. The D sweep was therefore comparing a tuned
- * cell against two untuned ones and the trend it showed was UNDERSTATED. */
+/* The vector width follows DPT. Measured fact worth keeping: when only DPT==2
+ * had a vector path, generalising to DPT 1/2/4 changed NOTHING (10.59/13.19/
+ * 21.72 ms, inside noise) -- nvcc already emits efficient accesses for the
+ * contiguous scalar loop. The explicit paths are kept as clearer code, not as
+ * an optimisation, and DPT=8 (D=256) still takes the #else loop for the same
+ * reason: it costs nothing. */
 #if DPT == 1
     if (MODE == M_SCRATCH) { *sc = L[0]; return; }
     unsigned short v = (unsigned short)(*sc + L[0]);

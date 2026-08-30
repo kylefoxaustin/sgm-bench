@@ -6,7 +6,7 @@
 # per cell is the whole point: a stale golden from another D is a textbook false
 # negative and has already happened once in this project.
 #
-#   ./scripts/sweep.sh <impl-build-cmd> <out.json>
+#   ./scripts/sweep.sh "" <out.json>    (the CUDA build is hardcoded below)
 #
 # Field of view is NOT a third axis here. FOV does not change the kernel; it
 # changes the D a given range REQUIRES, via d = f*B/Z with f = (W/2)/tan(HFOV/2).
@@ -22,7 +22,8 @@ for D in 32 64 128; do
   for RES in "1920 1080" "1280 720" "960 540" "640 480"; do
     set -- $RES; W=$1; H=$2
     echo "=== D=$D  ${W}x${H} ==="
-    gcc -O2 -Icommon -DSGM_D=$D -o bin/gen_synthetic common/gen_synthetic.c 2>/dev/null  # scene must match the D under test
+    gcc -O2 -Icommon -DSGM_D=$D -o bin/gen_synthetic common/gen_synthetic.c \
+        || { echo "  ABORT: generator build failed; a stale binary with the wrong -DSGM_D would silently reuse"; exit 1; }
     ./bin/gen_synthetic "$W" "$H" data/sweep 1 >/dev/null 2>&1 || { echo "  gen failed"; continue; }
 
     # golden: scalar reference, this D, this resolution
@@ -32,9 +33,11 @@ for D in 32 64 128; do
     ./bin/sgm_ref_d data/sweep/left.pgm data/sweep/right.pgm -w 0 -n 1 \
         -o data/sweep/golden.pgm --no-roofline >/dev/null 2>&1 \
         || { echo "  golden failed"; continue; }
+    # A golden that cannot fail a truncated implementation must not gate a cell.
+    python3 scripts/check_golden_discriminates.py data/sweep/golden.pgm "$D" >/dev/null 2>&1 \
+        || { echo "  ABORT: golden for D=$D ${W}x${H} does not discriminate"; exit 1; }
 
     # implementation under test, same D
-    if ! eval "${1:-false}" ; then :; fi
     nvcc -O3 -Icommon -arch=$NVARCH -DSGM_D=$D -c cuda/sgm_cuda_opt.cu -o /tmp/sw.o 2>/dev/null \
         && gcc -O2 -Wall -std=gnu11 -Icommon -DSGM_D=$D -DCFLAGS_STR='"nvcc -O3"' \
                -DGIT_SHA='"sweep"' -c common/harness.c -o /tmp/swh.o 2>/dev/null \
@@ -46,7 +49,7 @@ for D in 32 64 128; do
     # `|| true`, which swallowed exit 2 (GOLDEN MISMATCH) so a wrong-answer row
     # landed in the output JSON and flowed on into the published grid.
     ./bin/sgm_sweep data/sweep/left.pgm data/sweep/right.pgm -g data/sweep/golden.pgm \
-        -w 10 -n 60 -j "$OUT" --board "${BOARD:-unknown}" --no-roofline 2>&1 | grep -E "^cuda|GOLDEN"
+        -w 10 -n 60 -j "$OUT" --board "${BOARD:-unknown}" 2>&1 | grep -E "^cuda|GOLDEN|ROOFLINE"
     rc=${PIPESTATUS[0]}
     if [ "$rc" != 0 ]; then echo "  ABORT: cell D=$D ${W}x${H} exited $rc"; exit "$rc"; fi
   done

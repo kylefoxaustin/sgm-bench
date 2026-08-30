@@ -51,13 +51,13 @@ def main():
     min_distinct = int(sys.argv[3]) if len(sys.argv) > 3 else 8
     px = read_pgm(path)
     top, distinct = max(px), len(set(px))
-    need = D - 2
+    need = D - 1
     decile = int(D * 0.9)
     n_top = sum(1 for v in px if v >= decile)
     cov = 100.0 * n_top / len(px)
     ok = True
     print("golden %s  (D=%d)" % (path, D))
-    print("  highest disparity present : %d   (need >= %d)" % (top, need))
+    print("  highest disparity present : %d   (need >= %d, i.e. d=D-1)" % (top, need))
     print("  distinct values           : %d   (need >= %d)" % (distinct, min_distinct))
     print("  top-decile coverage       : %d px = %.4f%%  (>= %d)   (need >= 0.5%%)"
           % (n_top, cov, decile))
@@ -67,9 +67,24 @@ def main():
         try:
             import numpy as np
             gt = np.load(gtp).ravel()
-            true_top = int((gt >= decile).sum())
+            g = np.frombuffer(px, dtype=np.uint8).astype(np.float32)
+            gtf = gt.ravel()[:g.size]
+            # A real INTERSECTION: pixels the golden puts high AND the ground
+            # truth agrees are high. Counting gt>=decile alone is not an
+            # "of which" -- it says nothing about the golden.
+            inter = int(((g >= decile) & (gtf >= decile)).sum())
+            true_top = inter
             print("  ...of which TRUE high-disparity pixels: %d   "
-                  "(the rest are the implementation's own errors)" % true_top)
+                  "(the rest are the implementation's own errors)" % inter)
+            # And check the TOP, not only the decile: a golden whose top of range
+            # is reached only by errors is pinned by the implementation's own
+            # mistakes, which a better implementation would make fewer of.
+            top_true = int((gtf >= need).sum())
+            if top_true == 0:
+                print("  THIN: ground truth never reaches d >= %d, so nothing in this scene" % need)
+                print("        can legitimately win there. Truncation at the top is pinned")
+                print("        only by errors. Use a D matched to the scene's disparity range.")
+                ok = False
             if true_top == 0:
                 print("  THIN: the top of the range is reached ONLY by errors. A more accurate")
                 print("        implementation would reach it less and be harder to distinguish")

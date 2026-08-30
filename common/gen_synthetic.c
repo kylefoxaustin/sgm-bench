@@ -76,10 +76,16 @@ int main(int argc, char **argv) {
          * verified as reachable. A scene that cannot exercise a disparity
          * cannot test whether an implementation can find it.
          *
-         * Slabs now span bgd+1 .. SGM_D-2 with the LAST slab pinned to the
-         * maximum, so the top of the range is always populated by construction
-         * rather than by luck of the seed. */
-        int dlo = bgd + 1, dhi = SGM_D - 2;
+         * Slabs span bgd+1 .. SGM_D-1 with the LAST slab pinned to the maximum.
+         *
+         * ⚠️ D-1, not D-2. Pinning to D-2 left d = D-1 unreachable, and that is
+         * the single most bug-prone disparity in the whole range: it is the lane
+         * where every implementation special-cases "d+1 is out of range, treat
+         * as 255". A golden in which d = D-1 never wins cannot test that lane at
+         * all -- the D=256 golden had ZERO pixels there and the D=64 golden had
+         * two. Off by one in the direction that removes the case most likely to
+         * be wrong. */
+        int dlo = bgd + 1, dhi = SGM_D - 1;   /* D-1, NOT D-2 */
         /* STRATIFIED: slab s draws from band s, so the slabs cover the range
          * evenly instead of clustering wherever the RNG happens to land. The
          * last slab is pinned to the maximum so the very top is always present. */

@@ -62,12 +62,17 @@ data/synthetic/left.pgm: bin/gen_synthetic
 	mkdir -p data/synthetic
 	./bin/gen_synthetic $(SYN_W) $(SYN_H) data/synthetic 1
 
+# every golden must be able to fail a truncated implementation
+golden-check:
+	@python3 scripts/check_golden_discriminates.py data/golden/synthetic.pgm 64
+
 golden: bin/sgm_ref data/synthetic/left.pgm
 	mkdir -p data/golden
 	./bin/sgm_ref data/synthetic/left.pgm data/synthetic/right.pgm -w 0 -n 1 -o data/golden/synthetic.pgm
 	sha256sum data/golden/synthetic.pgm > data/golden/synthetic.sha256
 	@echo "params: D=$$(grep -E '^#define SGM_D ' common/sgm_params.h | awk '{print $$3}') paths=$$(grep -E '^#define SGM_PATHS' common/sgm_params.h | awk '{print $$3}')" > data/golden/synthetic.params
 	@cat data/golden/synthetic.sha256 data/golden/synthetic.params
+	@python3 scripts/check_golden_discriminates.py data/golden/synthetic.pgm $$(grep -E '^#define SGM_D ' common/sgm_params.h | awk '{print $$3}')
 	@if [ -f data/real/left.pgm ]; then \
 	  ./bin/sgm_ref data/real/left.pgm data/real/right.pgm -w 0 -n 1 -o data/golden/real.pgm && \
 	  sha256sum data/golden/real.pgm > data/golden/real.sha256; fi
@@ -107,4 +112,4 @@ check: all
 clean:
 	rm -rf bin
 
-.PHONY: all golden check clean roofline-cal cuda
+.PHONY: all golden golden-check check clean roofline-cal cuda
