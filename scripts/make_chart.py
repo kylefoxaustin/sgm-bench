@@ -66,7 +66,8 @@ ax.legend(handles=[Patch(color=COL[c], label=l) for c, l in
                    [("GPU","GPU"),("CPU","CPU"),("DSP","DSP"),
                     ("HW","fixed-function (throughput only, not bit-exact)"),
                     ("REF","scalar reference")]],
-          loc="lower right", frameon=False, fontsize=9)
+          loc="upper center", bbox_to_anchor=(0.5, -0.06), ncol=5,
+          frameon=False, fontsize=9)
 ax.grid(axis="x", alpha=.25, which="both")
 for sp in ("top", "right", "left"): ax.spines[sp].set_visible(False)
 fig.tight_layout()
