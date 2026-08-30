@@ -251,9 +251,9 @@ BW2 = [
  ("8x Cortex-A720",   "238.3 ms", "18.9 †", "46.3",  "41%", "was 14% on A -- no longer comfortably compute-bound"),
  ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","approximate: their fused kernel parks state in VTCM"),
  ("Mali-G720 (10 CU)","380.0 ms", "11.8 †", "46.3",  "26%", "not bandwidth-bound"),
- ("6x Cortex-A55",    "640.1 ms", "8.8 M",  "13.7",  "64%", "TWO-THIRDS of the whole chip's bus at six threads"),
- ("Mali-G310 (1 CU)", "2,704 ms", "2.1 M",  "13.7",  "15%", "GPU + host combined; not bandwidth-bound"),
- ("1x Cortex-A55",    "2,201 ms", "2.7 M",  "13.7",  "20%", "single core, still triple its Config A draw"),
+ ("6x Cortex-A55",    "640.1 ms", "8.8 measured",  "13.7",  "64%", "TWO-THIRDS of the whole chip's bus at six threads"),
+ ("Mali-G310 (1 CU)", "2,704 ms", "2.1 measured",  "13.7",  "15%", "GPU + host combined; not bandwidth-bound"),
+ ("1x Cortex-A55",    "2,201 ms", "2.7 measured",  "13.7",  "20%", "single core, still triple its Config A draw"),
 ]
 tblW2 = sB2.shapes.add_table(len(BW2)+1, 6, Inches(.6), Inches(1.8), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((2.4, 1.3, 1.5, 1.4, 1.0, 4.5)): tblW2.columns[i].width = Inches(w)
@@ -268,13 +268,15 @@ for rr_, row in enumerate(BW2, start=1):
         cell = tblW2.cell(rr_, c); cell.text = str(t)
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
         run.font.size = Pt(9.5); run.font.color.rgb = INK; run.font.bold = (c in (0, 2))
+        if c == 2 and "measured" in str(t):
+            run.font.color.rgb = RGBColor(0x18, 0x7A, 0x33)
 textbox(sB2, .6, 5.5, 12.2, .85,
         "The headline: at Configuration B the CPU walls MOVE. The A720 cluster jumps from 14% to 41% of its bus and "
         "the six-A55 cluster to 64% -- the 8-path uint16 S-plane converts comfortably compute-bound CPUs into "
         "bandwidth-pressured ones. (It is also why the A720 cluster absorbed Configuration C's extra pixels at the "
         "same wall-clock: it was already pressed against a different limit than arithmetic.)", 12.5, True, INK)
 textbox(sB2, .6, 6.55, 12.2, .5,
-        "M = MEASURED at the imx9_ddr0 DDR controller (idle-corrected whole-run, read+write). † = DERIVED: 4.50 GB/frame "
+        "GREEN 'measured' = read directly from the imx9_ddr0 DDR controller (idle-corrected whole-run, read+write). † = DERIVED: 4.50 GB/frame "
         "streaming model (cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured "
         "frame time -- cache-reuse-free, so a slight under-count: the model reproduces the A55x6's measured cell at 80%.",
         10, False, MUTED)
