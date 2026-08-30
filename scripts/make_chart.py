@@ -58,8 +58,8 @@ ax.invert_yaxis()
 ax.set_xscale("log")
 ax.set_xlim(10, 200000)
 ax.set_xlabel("MDE/s  —  million disparity estimations per second  (log scale)", fontsize=10)
-ax.set_title("Semi-Global Matching, 1920×1080, 4 paths, 9×7 census\n"
-             "solid bars D=64, bit-exact to golden 0bc0102058d1505f · purple OFA bars are the dedicated\n"
+ax.set_title("Configuration A: 1920×1080, D=64, 4 paths, 9×7 census, dense full-resolution output\n"
+             "solid bars bit-exact to golden 0bc0102058d1505f · purple OFA bars are the dedicated\n"
              "stereo engines at their required D=128, throughput only",
              fontsize=12, pad=14)
 ax.legend(handles=[Patch(color=COL[c], label=l) for c, l in

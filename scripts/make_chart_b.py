@@ -47,8 +47,9 @@ ax.invert_yaxis()
 ax.set_xscale("log")
 ax.set_xlim(2, 80000)
 ax.set_xlabel("MDE/s, work-performed convention  (log scale)", fontsize=10)
-ax.set_title("Configuration B: 1920×800 → 960×400, two full 64-D scales fused, 8 paths,\n"
-             "weighted P1, census 9×7 on SobelX  ·  every bar bit-exact to golden bcb9cb0bd6f49799",
+ax.set_title("Configuration B: 1920×800, D=64, 8 paths, 9×7 census on SobelX, two scales fused, half-res output\n"
+             "solid bars bit-exact to golden bcb9cb0bd6f49799 · MDE/s is the work-performed\n"
+             "convention, both full-search scales count",
              fontsize=12, pad=14)
 ax.legend(handles=[Patch(color=COL[c], label=l) for c, l in
                    [("GPU","GPU"),("CPU","CPU"),("DSP","DSP"),("REF","scalar reference")]],
