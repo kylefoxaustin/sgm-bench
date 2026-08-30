@@ -1,8 +1,8 @@
 # sgm-bench
 
 **Semi-Global Matching stereo, measured across ten processors from four
-vendors — CPUs, GPUs, a DSP and fixed-function stereo engines — with every
-target required to produce byte-identical output.**
+vendors — CPUs, GPUs, a DSP and fixed-function stereo engines — in two
+configurations, with every target required to produce byte-identical output.**
 
 ![SGM on real stereo imagery](docs/panels/motorcycle_real.png)
 
@@ -48,9 +48,12 @@ bottom is the floor the whole exercise is measured against — the fastest bar i
 
 ---
 
-## Results
+## Results — Configuration A
 
-MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`.
+The primary configuration: **1920×1080, D=64, 4 paths, 9×7 census**, dense
+full-resolution output. MEASURED; full provenance in `REPORT.md`. (A second,
+embedded-flavoured configuration is measured on the same roster —
+[Configuration B](#configuration-b-multi-scale-8-path) below.)
 
 | target | class | threads | ms | **MDE/s** | DRAM GB/s ‡ | per-core |
 |---|---|---|---|---|---|---|
@@ -155,7 +158,8 @@ trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ## Configuration B: multi-scale, 8-path
 
-A second benchmark configuration (`multiscale/`), deliberately harder and more
+The same roster as Configuration A, on a second configuration (`multiscale/`) —
+deliberately harder and more
 embedded-flavoured than the primary one: **1920×800 in → 960×400 out**, a full
 64-disparity SGM at *both* half and full resolution with the two **data costs
 averaged** before aggregation (multi-scale cost fusion — both scales do full
@@ -183,7 +187,8 @@ All rows bit-exact to golden `bcb9cb0bd6f49799` — the same implementation tier
 as the primary configuration: tuned CUDA on the NVIDIA GPUs, OpenCL on the
 Malis, NEON+OpenMP on the Arm cores, and the plain-C oracle as the floor. The
 CUDA port lacks the primary kernel's path-pairing pass, so its rows are the
-conservative side of what those GPUs can do.
+conservative side of what those GPUs can do. The Hexagon and A78C rows are in
+flight and will complete the roster.
 
 ## On real stereo imagery
 
@@ -252,6 +257,13 @@ It selects cores by **MIDR part number, not CPU index** (`pin_list a720` →
 cluster" is not a portable concept. Use it rather than invoking the binary bare:
 on a heterogeneous SoC the scheduler will otherwise migrate threads onto the
 wrong cluster mid-measurement.
+
+Configuration B builds as standalone binaries:
+
+    gcc -O3 -mcpu=native -fopenmp -Icommon -o sgm_ms \
+        multiscale/sgm_ms_neon.c common/census_neon.c common/util.c -lm
+    ./sgm_ms data/multiscale/left.pgm data/multiscale/right.pgm \
+        -g data/multiscale/golden_ms.pgm -t $(nproc)
 
 Harness flags: `-o out.pgm`, `-g golden.pgm`, `-t threads`, `-w warmup`,
 `-n timed`, `-j results.json`, `--board name`. Timing is the median of `-n`
@@ -354,9 +366,16 @@ the freedom is worth more as permission not to worry than as an optimisation.
     colmajor/        column-major layout experiment — contributed, not my work
     hvx/             Hexagon HVX kernels — contributed, not my work
     mali_cl/         OpenCL kernel + host
-    cuda/            CUDA port of the OpenCL kernel (Jetson Orin / Thor)
-    scripts/pin.sh   topology-aware pinning wrapper
-    data/golden/     golden disparity map + sha256 + the params that produced it
+    cuda/            CUDA kernels: the naive port and the tuned warp-centric one
+    multiscale/      Configuration B: oracle, NEON, OpenCL and CUDA implementations
+    nvofa/           driver for NVIDIA's fixed-function stereo engine (NvOF API)
+    tools/           the GPU and CPU streaming-copy bandwidth probes
+    scripts/         pinning, sweeps, golden checks, chart/deck generators
+    data/golden/     Configuration A goldens + sha256 + roofline calibrations
+    data/shared/     the cross-platform D=64/128/256 scene and its goldens
+    data/multiscale/ Configuration B scene and golden
+    data/real/       Middlebury-derived real-imagery scene and ground truth
+    docs/            results chart, panels, and the generated deck
     REPORT.md        the measurement record, with provenance on every number
 
 `colmajor/` and `hvx/` were contributed by a collaborating session working on
@@ -376,7 +395,10 @@ in the Makefile:
 
 `make check` picks it up automatically. The Makefile ships with only `a55`
 enabled; the others are built by uncommenting their block, and `mali_cl` needs
-`-lOpenCL` added by hand.
+`-lOpenCL` added by hand. Configuration B implementations are standalone
+binaries instead (two images in, half-resolution map out — see
+`multiscale/sgm_ms_ref.c` for the contract); gate them with `-g
+data/multiscale/golden_ms.pgm`.
 
 ---
 
