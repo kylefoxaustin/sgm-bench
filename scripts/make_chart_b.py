@@ -57,6 +57,13 @@ ax.legend(handles=[Patch(color=COL[c], label=l) for c, l in
           frameon=False, fontsize=9)
 ax.grid(axis="x", alpha=.25, which="both")
 for sp in ("top", "right", "left"): ax.spines[sp].set_visible(False)
+ax.text(0.985, 0.13,
+        "fixed-function OFA engines, matched in/out geometry,\n"
+        "their OWN algorithm (not bit-exact, so no bar):\n"
+        "Thor OFA 3.38 ms (296 fps) · Orin OFA 14.90 ms (67 fps)",
+        transform=ax.transAxes, ha="right", va="center", fontsize=9.5,
+        color="#7B4FD1", fontweight="bold",
+        bbox=dict(facecolor="white", edgecolor="#7B4FD1", alpha=0.95, pad=5))
 fig.tight_layout()
 fig.subplots_adjust(bottom=0.14)
 fig.savefig("docs/results_b.png", dpi=150)
