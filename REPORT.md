@@ -789,6 +789,25 @@ scan, one work-item per pixel. The same bottleneck the CUDA port had before it
 was rewritten as a warp reduction. The gate does not fire, because it is
 calibrated against itself, but the numbers name the phase to fix.
 
+## A warned failure mode that struck one stage downstream of the warning
+
+When Configuration B was handed to the Hexagon port, the handoff warned that
+P2=200 breaks the primary implementation's unclamped aggregation add. **The
+warning named the right failure mode and the wrong location.** Their aggregation
+step was already saturating — what P2=200 actually breaks on that port is the
+**argmin key**: with eight paths, S reaches 8×255 = 2040, overflowing the packed
+`(S<<6)|d` uint16 key their Config A argmin used. The result would have been a
+plausible wrong map with matching structure — the exact predicted symptom, from
+a stage neither party named. They redesigned the key (5 bits per 32-lane half
+with an explicit cross-half tie-break to the lower half) and proved it on
+tie-storms at the cap.
+
+⭐ The durable lesson: **a warned failure mode migrates — harden the property,
+not the line.** A port that had only clamped the aggregation add, as the warning
+suggested, would have shipped wrong maps with confidence. The property is "no
+quantity derived from S may assume it fits its Config-A width"; the add was one
+instance, the key another.
+
 ## Measurement quality: dispersion, transfers, and observed thread counts
 
 Three instrument defects were fixed after review. All targets were then
