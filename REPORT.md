@@ -498,9 +498,10 @@ finding.
 out-of-order CPUs. That conclusion is withdrawn for the DSP.**
 
 The Hexagon NSP measured **18.7× slower than the A78C cluster, then 12.8×, then
-1.45× — a 13× move in one day**, all bit-exact against the same golden. At its
-current best it does **957 MDE/s at 4 threads**, and it **beats a single A78C
-core by 2.40×**. Nothing here was retracted along the way, because the ratio was
+1.51× on medians — a ~12× move in one day**, all bit-exact against the same
+golden. At its audited best it does **894 MDE/s at 4 threads** (median of five
+invocations — the board is bimodal between invocations and minima flatter it),
+and it **beats a single A78C core by 2.26×**. Nothing here was retracted along the way, because the ratio was
 labelled a floor of *effort* rather than the DSP's ceiling every time it was
 printed. That labelling is the only reason this reads as progress instead of as
 three corrections.
