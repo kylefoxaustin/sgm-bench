@@ -314,26 +314,34 @@ BROWS = [  # label, class, ms, MDE/s(work) as published — ms-sorted, OFA slott
  ("Mali-G310 (1 CU)",           "GPU",  2704.0,     45),
  ("scalar reference",           "REF", 14265.0,    8.6),
 ]
-tblB = sB.shapes.add_table(len(BROWS)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
-for i, w in enumerate((3.6, 1.0, 1.9, 1.3, 1.9, 2.4)): tblB.columns[i].width = Inches(w)
+tblB = sB.shapes.add_table(len(BROWS)+1, 7, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.3, 0.9, 1.6, 1.1, 1.7, 1.5, 2.0)): tblB.columns[i].width = Inches(w)
 for rr_ in range(len(BROWS)+1): tblB.rows[rr_].height = Inches(0.25)
-for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "vs scalar reference")):
+for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "DRAM GB/s ‡", "vs scalar reference")):
     cell = tblB.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseB = 14265.0
+CEIL = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
+        "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
+        "Cortex-A78C x8 (6 threads)": "— / n.m.", "Cortex-A78C x1": "— / n.m.",
+        "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
+        "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
+        "Cortex-A55 x6": "— / 13.7", "Cortex-A55 x1": "— / 13.7",
+        "Mali-G310 (1 CU)": "— / 13.7", "scalar reference": "— / 13.7"}
 for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
+    bw = CEIL.get(lab, "—")
     if ms is not None and mdev is None:
         fps = 1000.0/ms
-        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—",
+        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—", bw,
                 f"{baseB/ms:,.0f}x (time only)")
     elif ms is None:
-        vals = (lab, cls, "cannot run it", "—", "—", "no 8-path, weighted-P1 or two-scale controls")
+        vals = (lab, cls, "cannot run it", "—", "—", "—", "no 8-path/weighted-P1/two-scale controls")
     else:
         fps = 1000.0/ms
         vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.1f}" if fps >= 10 else f"{fps:.2f}",
-                f"{mdev:,}" if mdev >= 10 else f"{mdev}",
+                f"{mdev:,}" if mdev >= 10 else f"{mdev}", bw,
                 f"{baseB/ms:,.0f}x faster" if ms != baseB else "the floor (1x)")
     for c, t in enumerate(vals):
         cell = tblB.cell(rr_, c); cell.text = str(t)
@@ -354,10 +362,10 @@ for i, (big, small) in enumerate(CALLOUTS_B):
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
 textbox(sB, .6, 7.28, 12.2, .3,
-        "MDE/s (work) = both full-search scales count: (0.384 + 1.536) Mpx x 64 / runtime. OFA rows: the engines' OWN "
-        "SGM at matched geometry (downscaleFactor=2, D=128), throughput only; full-res-out variants 9.15 / 54.94 ms. "
-        "DRAM: same silicon and MEASURED ceilings as the bandwidth slide; Config B's per-phase byte model is not "
-        "separately derived, so no achieved column is claimed here.",
+        "MDE/s (work) = both scales count: (0.384 + 1.536) Mpx x 64 / runtime. OFA rows: their OWN SGM at matched "
+        "geometry (ds=2, D=128), throughput only. ‡ DRAM = achieved / ceiling GB/s: ceilings MEASURED (same silicon as "
+        "Config A; n.m. = not measured on that board); achieved left blank -- B's per-phase byte model is not derived, "
+        "and an invented number would poison the column.",
         10, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
@@ -405,23 +413,31 @@ CROWS = [  # label, class, ms, MDE/s(work) — same columns and types as the Con
  ("Mali-G310 (1 CU)",            "GPU", 3657.0,     45),
  ("scalar reference",            "REF",18020.0,    9.2),
 ]
-tblC = sC.shapes.add_table(len(CROWS)+1, 6, Inches(.6), Inches(1.66), Inches(12.1), Inches(0.4)).table
-for i, w in enumerate((3.6, 1.0, 1.9, 1.3, 1.9, 2.4)): tblC.columns[i].width = Inches(w)
+tblC = sC.shapes.add_table(len(CROWS)+1, 7, Inches(.6), Inches(1.66), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.3, 0.9, 1.6, 1.1, 1.7, 1.5, 2.0)): tblC.columns[i].width = Inches(w)
 for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.25)
-for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "vs scalar reference")):
+for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "DRAM GB/s ‡", "vs scalar reference")):
     cell = tblC.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseC = 18020.0
+CEILC = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
+         "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
+         "Cortex-A78C x8 (6 threads)": "— / n.m.", "Cortex-A78C x1": "— / n.m.",
+         "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
+         "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
+         "Cortex-A55 x6": "— / 13.7", "Cortex-A55 x1": "— / 13.7",
+         "Mali-G310 (1 CU)": "— / 13.7", "scalar reference": "— / 13.7"}
 for rr_, (lab, cls, ms, mdev) in enumerate(CROWS, start=1):
     fps = 1000.0/ms
+    bw = CEILC.get(lab, "—")
     if mdev is None:
-        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—",
+        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—", bw,
                 f"{baseC/ms:,.0f}x (time only)")
     else:
         vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.1f}" if fps >= 10 else f"{fps:.2f}",
-                f"{mdev:,}" if mdev >= 10 else f"{mdev}",
+                f"{mdev:,}" if mdev >= 10 else f"{mdev}", bw,
                 f"{baseC/ms:,.0f}x faster" if ms != baseC else "the floor (1x)")
     for c, t in enumerate(vals):
         cell = tblC.cell(rr_, c); cell.text = str(t)
@@ -441,8 +457,8 @@ textbox(sC, .6, 6.68, 12.2, .5,
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
 textbox(sC, .6, 7.2, 12.2, .3,
-        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact, "
-        "MDE/s(work) undefined. DRAM: ceilings as on the bandwidth slide; no per-phase achieved bytes derived for C.",
+        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact. "
+        "‡ DRAM = achieved / ceiling GB/s: ceilings MEASURED (n.m. = not measured on that board); achieved blank — C's byte model is not derived.",
         9.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
