@@ -379,7 +379,7 @@ the freedom is worth more as permission not to worry than as an optimisation.
     a55/sgm_fused.c  REJECTED wavefront experiment, kept for its header
     a720/            A720-specific variant (K-row interleaving; measured no gain)
     colmajor/        column-major layout experiment — contributed, not my work
-    hvx/             Hexagon HVX kernels — contributed, not my work
+    hvx/             Hexagon DSP-side bandwidth probe — contributed, not my work
     mali_cl/         OpenCL kernel + host
     cuda/            CUDA kernels: the naive port and the tuned warp-centric one
     multiscale/      Configuration B: oracle, NEON, OpenCL and CUDA implementations
@@ -395,6 +395,13 @@ the freedom is worth more as permission not to worry than as an optimisation.
 
 `colmajor/` and `hvx/` were contributed by a collaborating session working on
 Qualcomm silicon and are credited as theirs.
+
+⚠️ **The one reproducibility gap, stated rather than implied:** the tuned HVX
+SGM kernels behind the two Hexagon rows live in that session's own tree and are
+**not in this repo yet** — `hvx/` holds only their DSP-side bandwidth probe.
+Every other row rebuilds from what is here. The Hexagon rows are gated by the
+same goldens as everything else, so a re-run needs their sources, not new
+trust; contribution of both kernel sets has been requested.
 
 ### Adding an implementation
 
