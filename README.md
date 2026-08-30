@@ -1,20 +1,40 @@
 # sgm-bench
 
 **Semi-Global Matching stereo, measured across ten processors from four
-vendors — CPUs, GPUs, a DSP, and a fixed-function stereo engine — plus the
-optimisation work to make each one fast.**
+vendors — CPUs, GPUs, a DSP and fixed-function stereo engines — with every
+target required to produce byte-identical output.**
 
-| | |
-|---|---|
-| fastest measured | **74,957 MDE/s** — RTX 5090, 1080p, D=256 |
-| fastest at D=64 | **37,383 MDE/s** — RTX 5090, 282 fps at 1080p |
-| fastest CPU | **2,569 MDE/s** — 8× Cortex-A720, **10.4× the fastest published Arm-CPU SGM** at matched D and path count |
-| fastest fixed-function | **28,402 MDE/s** — NVIDIA OFA on Jetson Thor, which beats our tuned CUDA on the same chip by 2.34× and *loses* to it on the previous generation |
+## Why SGM is hard
 
-Ten targets produce byte-identical output; a run that doesn't is discarded
-rather than reported. [`REPORT.md`](REPORT.md) has the full record — every
-number's provenance, the five optimisations that were tried and rejected, and
-an adversarial review of the results including two errors it found in them.
+Stereo matching is easy to state and awkward to make fast. For every pixel you
+score **D** candidate disparities, then smooth those scores so the depth map is
+coherent rather than speckled. The smoothing is what makes it good, and it is
+also what makes it hard:
+
+    L(p, d) = C(p, d) + min( L(p−1, d),  L(p−1, d±1) + P1,  min_k L(p−1, k) + P2 ) − min_k L(p−1, k)
+
+**Every pixel depends on the pixel before it.** That is a serial recurrence along
+each of four sweep directions, so the obvious parallelism — one thread per pixel —
+is unavailable. What is left is parallelism across disparities and across
+independent scanlines, and a cross-lane `min` over all D at *every step*.
+
+Three properties fall out, and they shape every implementation here:
+
+- **The work is large and fixed.** 1920×1080 × 64 disparities × 4 paths ≈ 530M
+  updates per frame. There is no early exit and no data-dependent shortcut.
+- **The intermediate is bigger than the image.** The aggregated cost volume is
+  265 MB per frame at 1080p — 128× the input — so a tuned implementation ends up
+  **memory-bound**, not compute-bound. Ours reaches 145 GB/s of a measured
+  249 GB/s ceiling on Thor.
+- **Wide hardware does not automatically win.** A vector unit can fill lanes but
+  cannot remove the dependency; hiding it takes independent chains and costs
+  registers. That is why the ordering below is not the ordering of raw FLOPS.
+
+![SGM throughput by processing unit](docs/results.png)
+
+Every bar is bit-exact to the same golden hash. The scalar reference at the
+bottom is the floor the whole exercise is measured against — the fastest bar is
+**700× faster than it, computing byte-identical output**.
 
 ---
 
@@ -43,10 +63,9 @@ Thor's peak across the D sweep is **12,138 MDE/s at D=128**; it falls back to
 5090 shows no such reversal** — 37,383 / 64,880 / 74,957 MDE/s at D=64/128/256 —
 which is what the mechanism predicts on a part with 5.6× the bandwidth.
 
-### Resolution and disparity, corrected
+### Resolution and disparity
 
-The (resolution × D) grid was re-run at 60 timed frames after a review found the
-12-frame version contained a physically impossible cell. At D=64 efficiency falls
+At D=64 efficiency falls
 **10,077 → 9,467 → 9,267 → 9,187 MDE/s** from 1080p to VGA — a **1.10×** fall,
 not the 1.97× the under-sampled grid showed. Larger D remains clearly cheaper per
 disparity: **6,266 → 10,077 → 12,260** at 1080p as D goes 32 → 64 → 128.
@@ -136,44 +155,9 @@ at **p95/median 1.00–1.04**; the RTX 5090, the only shared machine, runs
 co-resides on the card. Longer warm-ups do not help; between-run medians are
 reproducible to 2–7%, so its numbers are sound but carry real uncertainty.
 
-No dispersion figure appeared anywhere in this project until 2026-08-29 — which
-is precisely how a grid cell that was 80% wrong reached publication carrying a
-p95/median of 1.55. `REPORT.md` has the full table, plus two other instrument
-defects fixed at the same time: host↔device transfer had been folded into the
-census and argmin phase timings, and the thread count was a *requested* value
-echoed back rather than the team size observed inside the parallel region.
-
-## Why SGM is hard
-
-Stereo matching is easy to state and awkward to make fast. For every pixel you
-score **D** candidate disparities, then smooth those scores so the depth map is
-coherent rather than speckled. The smoothing is what makes it good, and it is
-also what makes it hard:
-
-    L(p, d) = C(p, d) + min( L(p−1, d),  L(p−1, d±1) + P1,  min_k L(p−1, k) + P2 ) − min_k L(p−1, k)
-
-**Every pixel depends on the pixel before it.** That is a serial recurrence along
-each of four sweep directions, so the obvious parallelism — one thread per pixel —
-is unavailable. What is left is parallelism across disparities and across
-independent scanlines, and a cross-lane `min` over all D at *every step*.
-
-Three properties fall out, and they shape every implementation here:
-
-- **The work is large and fixed.** 1920×1080 × 64 disparities × 4 paths ≈ 530M
-  updates per frame. There is no early exit and no data-dependent shortcut.
-- **The intermediate is bigger than the image.** The aggregated cost volume is
-  265 MB per frame at 1080p — 128× the input — so a tuned implementation ends up
-  **memory-bound**, not compute-bound. Ours reaches 145 GB/s of a measured
-  249 GB/s ceiling on Thor.
-- **Wide hardware does not automatically win.** A vector unit can fill lanes but
-  cannot remove the dependency; hiding it takes independent chains and costs
-  registers. That is why the ordering below is not the ordering of raw FLOPS.
-
-![SGM throughput by processing unit](docs/results.png)
-
-Every bar is bit-exact to the same golden hash. The scalar reference at the
-bottom is the floor the whole exercise is measured against — the fastest bar is
-**700× faster than it, computing byte-identical output**.
+Phase timings exclude host↔device transfer, and the reported thread count is the
+team size observed inside the parallel region rather than the value requested.
+`REPORT.md` has the full dispersion table.
 
 ## Quick start
 
@@ -208,7 +192,7 @@ runs; p95 and min are also recorded.
 
 ---
 
-## There is dedicated stereo hardware on these parts, and we measured it
+## Dedicated stereo hardware
 
 Both Jetsons carry an **OFA — Optical Flow Accelerator** — whose VPI header
 documents a *"semi-global matching (SGM) computation"* with optional diagonal
@@ -255,8 +239,8 @@ mode was structurally incapable of producing.
 emits a **960×540** disparity map from a 1920×1080 input and runs in 4.14 ms on
 Thor. Quoting that as a 1080p result would overstate it by 2.3×. Every number
 above is `downscaleFactor=1`, full-resolution output. This is the same
-convention trap that made a vendor's quoted figure unusable earlier in this
-project, met again in different silicon.
+convention trap that makes many vendor throughput figures unusable: always check
+whether the quoted rate is for the input resolution or the delivered output.
 
 ## The workload
 
@@ -362,9 +346,8 @@ Infrastructure rather than findings, in brief. A run given `-g` checks its outpu
 hash against a scalar reference **in the same invocation as the timing** and
 exits 2 on mismatch. ⚠️ `-g` is optional: omit it and you get a timing with
 `golden_match: -1`, so "no number without a check" describes the gated path, not
-the tool. `sweep.sh` and `geometry.py` now enforce it — a mismatched cell aborts
-the sweep and unverified rows are refused entry to the grid — but that was added
-on 2026-08-29 after a review found both were letting failures through. A second
+the tool. `sweep.sh` aborts on a mismatched cell and `geometry.py` refuses
+unverified rows entry to the grid. A second
 gate compares each phase against a calibrated cost and exits 3 when a phase is
 correct but too slow, because a golden hash cannot see a kernel that is
 bit-exact and half-scalar. The threshold was set by planting a real defect and
@@ -377,19 +360,18 @@ Details, and the failure modes that motivated each, are in
 
 Things that cost real time here, recorded so they cost you less:
 
-- 🚨 **`-t` was inert until 2026-08-28.** Every impl takes `threads` and drops it
-  (`(void)threads`); the count came from `OMP_NUM_THREADS` alone, so `-t 1`
-  emitted a row *labelled* single-thread holding an all-core timing. Fixed: `-t`
-  now binds, and the reported count is read back from `omp_get_max_threads()`
-  rather than echoed from argv. **If you have data from before that commit,
-  re-run it — it cannot be repaired arithmetically**, because the error scaled
-  with each machine's own thread scaling (4.63× on A55, 2.6× on A78C).
-- 🚨 **`cpu_mask` in the JSON said `"0"` for every pinned run, until the same
-  day.** libgomp binds the primary thread in its *constructor*, before `main`,
-  so under `OMP_PROC_BIND` — which `pin.sh` sets — `sched_getaffinity()` on that
-  thread reports one core however early you call it. The field now reports the
-  **union over the OpenMP team**, gathered inside a parallel region. If you are
-  logging "which CPUs did this run on" anywhere else, check it the same way: the
+- 🚨 **A thread-count flag can be inert and still be reported.** OpenMP takes its
+  count from the environment, so a `-t` argument an implementation discards will
+  still appear in the results table and the JSON — a row *labelled* single-thread
+  holding an all-core timing. Read the count back from inside the parallel
+  region, and note the direction of the error: it shortens the run that was asked
+  to be slow, so it inflates single-thread baselines and flatters whatever they
+  are compared against. There is no correction factor, because the magnitude is
+  each machine's own thread scaling.
+- 🚨 **`sched_getaffinity()` cannot tell you which CPUs a pinned run used.**
+  libgomp binds the primary thread in its *constructor*, before `main`, so under
+  `OMP_PROC_BIND` that thread reports a single core however early you ask. Take
+  the union over the OpenMP team from inside a parallel region instead. The
   obvious call answers a question about the asking thread, not about the work.
 - 🚨 **A bit-exact kernel can still be half-scalar, and the hash will never
   tell you.** A census kernel here stepped 128 columns and stopped 124 short of
