@@ -245,8 +245,10 @@ textbox(sB2, .6, 1.1, 12.2, .5,
         "are MEASURED at the i.MX95 DDR controller; the rest are DERIVED as 4.50 GB / the measured frame time.", 11.5, False, MUTED)
 BW2 = [
  ("NVIDIA RTX 5090",  "9.08 ms",  "495 †",  "1,385", "36%", "memory-bound; below A's 42% (kernel lacks path-pairing)"),
- ("NVIDIA Thor",      "45.1 ms",  "100 †",  "249",   "40%", "memory-bound"),
- ("NVIDIA Orin AGX",  "72.8 ms",  "62 †",   "175",   "35%", "memory-bound"),
+ ("NVIDIA Thor",      "45.1 ms",  "100 †",  "249",   "24%", "EMC net-of-idle, measured; ≈ the model's 40% freq-normalized"),
+ ("NVIDIA Orin AGX",  "72.8 ms",  "62 †",   "175",   "25%", "EMC net-of-idle, measured; memory-bound"),
+ ("Thor OFA (ds=2)",  "3.38 ms",  "≈0 measured", "249", "1.4%", "EMC indistinguishable from idle at 296 fps — the block runs in its internals"),
+ ("Orin OFA (ds=2)",  "14.9 ms",  "≈0.7 measured","175", "0.9%", "≈ exactly the irreducible in+out images (67 fps × ~6 MB)"),
  ("8x Cortex-A78C",   "211.9 ms", "21.2 †", "n.m.",  "--",  "the S-plane tax; ceiling unmeasured on that board"),
  ("8x Cortex-A720",   "238.3 ms", "18.9 †", "46.3",  "41%", "was 14% on A -- no longer comfortably compute-bound"),
  ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","approximate: their fused kernel parks state in VTCM"),
@@ -255,9 +257,9 @@ BW2 = [
  ("Mali-G310 (1 CU)", "2,704 ms", "2.1 measured",  "13.7",  "15%", "GPU + host combined; not bandwidth-bound"),
  ("1x Cortex-A55",    "2,201 ms", "2.7 measured",  "13.7",  "20%", "single core, still triple its Config A draw"),
 ]
-tblW2 = sB2.shapes.add_table(len(BW2)+1, 6, Inches(.6), Inches(1.8), Inches(12.1), Inches(0.4)).table
+tblW2 = sB2.shapes.add_table(len(BW2)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((2.4, 1.3, 1.5, 1.4, 1.0, 4.5)): tblW2.columns[i].width = Inches(w)
-for rr_ in range(len(BW2)+1): tblW2.rows[rr_].height = Inches(0.3)
+for rr_ in range(len(BW2)+1): tblW2.rows[rr_].height = Inches(0.27)
 for c, t in enumerate(("processing unit", "frame", "achieved GB/s", "ceiling GB/s", "util", "wall")):
     cell = tblW2.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
@@ -268,15 +270,16 @@ for rr_, row in enumerate(BW2, start=1):
         cell = tblW2.cell(rr_, c); cell.text = str(t)
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
         run.font.size = Pt(9.5); run.font.color.rgb = INK; run.font.bold = (c in (0, 2))
-        if c == 2 and "measured" in str(t):
+        if (c in (2, 4)) and "measured" in str(t):
             run.font.color.rgb = RGBColor(0x18, 0x7A, 0x33)
-textbox(sB2, .6, 5.5, 12.2, .85,
+textbox(sB2, .6, 5.72, 12.2, .8,
         "The headline: at Configuration B the CPU walls MOVE. The A720 cluster jumps from 14% to 41% of its bus and "
         "the six-A55 cluster to 64% -- the 8-path uint16 S-plane converts comfortably compute-bound CPUs into "
         "bandwidth-pressured ones. (It is also why the A720 cluster absorbed Configuration C's extra pixels at the "
         "same wall-clock: it was already pressed against a different limit than arithmetic.)", 12.5, True, INK)
-textbox(sB2, .6, 6.55, 12.2, .5,
-        "GREEN 'measured' = read directly from the imx9_ddr0 DDR controller (idle-corrected whole-run, read+write). † = DERIVED: 4.50 GB/frame "
+textbox(sB2, .6, 6.68, 12.2, .45,
+        "GREEN 'measured' = imx9_ddr0 DDR controller (i.MX95 rows) or Jetson EMC utilization sampled at 200 ms, net of idle "
+        "(Jetson rows; % is relative to the run's EMC clock). † = DERIVED: 4.50 GB/frame "
         "streaming model (cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured "
         "frame time -- cache-reuse-free, so a slight under-count: the model reproduces the A55x6's measured cell at 80%.",
         10, False, MUTED)

@@ -427,6 +427,16 @@ search). And the fallback's cost is concrete: **13.4% of pixels come back with a
 non-zero vertical component, the largest 75 pixels** — errors the removed stereo
 mode was structurally incapable of producing.
 
+⭐ **The internals hypothesis is now MEASURED, on both parts.** Sampling the
+Jetsons' EMC (DRAM) utilization during sustained runs: our CUDA kernels pull
+**24–25% of the memory system net of idle** (Thor and Orin alike), while the
+OFA engines producing the *same-geometry output* read **1.4% on Thor —
+statistically indistinguishable from the idle baseline — and 0.8–1.0% on Orin,
+which is almost exactly the irreducible input+output image traffic** (67 fps ×
+~6 MB ≈ 0.4 GB/s). The fixed-function block converts SGM from a bandwidth
+problem into an on-chip streaming problem: DRAM sees the pictures in, the map
+out, and essentially nothing else.
+
 ⚠️ **Watch the downscale factor.** OFA defaults to `downscaleFactor=2`, which
 emits a **960×540** disparity map from a 1920×1080 input and runs in 4.14 ms on
 Thor. Quoting that as a 1080p result would overstate it by 2.3×. Every number
