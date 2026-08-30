@@ -49,7 +49,9 @@ for i, (lab, cls, ms, mde) in enumerate(rows):
                 va="center", ha="left", fontsize=8.5, color="#5f6368", style="italic")
     else:
         ax.barh(i, mde, color=COL[cls])
-        ax.text(mde * 1.08, i, f"{mde:,.0f}   ({ms:,.1f} ms)", va="center", fontsize=9)
+        fps = 1000.0 / ms
+        fps_s = f"{fps:,.0f} fps" if fps >= 10 else f"{fps:.1f} fps"
+        ax.text(mde * 1.08, i, f"{mde:,.0f}   ({ms:,.1f} ms · {fps_s})", va="center", fontsize=9)
 
 ax.set_yticks(list(y)); ax.set_yticklabels(labels, fontsize=10)
 ax.invert_yaxis()
