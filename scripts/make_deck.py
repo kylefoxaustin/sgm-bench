@@ -248,5 +248,26 @@ textbox(sl, .6, 7.12, 12.2, .4,
         "minimum here against 20 on the synthetic scene, so the hash-critical tie-break rule is pinned 720x harder.",
         11, False, MUTED)
 
+# ---------------- Configuration B slide ----------------
+sl = prs.slides.add_slide(blank)
+textbox(sl, .6, .35, 12, .7, "Configuration B: multi-scale, 8-path", 30, True)
+textbox(sl, .6, 1.0, 12.2, .4,
+        "1920x800 in, 960x400 out - two FULL 64-disparity scales with data costs averaged (multi-scale fusion, "
+        "not coarse-to-fine), census 9x7 on SobelX, 8 paths with direction-weighted P1 (40/20/10), P2=200 saturating.",
+        12, False, MUTED)
+try:
+    sl.shapes.add_picture("docs/results_b.png", Inches(1.35), Inches(1.55), height=Inches(4.95))
+except Exception:
+    pass
+textbox(sl, .6, 6.6, 12.2, .8,
+        "Same roster, same acceptance model: every row bit-exact to golden bcb9cb0bd6f49799, same implementation "
+        "tiers as Configuration A (tuned CUDA / OpenCL / NEON+OpenMP / HVX, scalar oracle as the floor). "
+        "At matched tiers it ranks like Configuration A - the CPU cluster leads one NSP ~1.3x on both; "
+        "per engine, one NSP beats one A78C core 1.60x.", 12, False, INK)
+textbox(sl, .6, 7.12, 12.2, .4,
+        "MDE/s is the work-performed convention - both scales count: (0.384 + 1.536) Mpx x 64 / time. "
+        "The OFA engines cannot run this configuration (no 8-path, weighted-P1 or two-scale controls).",
+        11, False, MUTED)
+
 prs.save("docs/sgm-results.pptx")
 print("wrote docs/sgm-results.pptx —", len(prs.slides.__iter__.__self__._sldIdLst), "slides")

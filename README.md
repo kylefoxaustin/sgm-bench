@@ -1,8 +1,9 @@
 # sgm-bench
 
-**Semi-Global Matching stereo, measured across ten processors from four
-vendors — CPUs, GPUs, a DSP and fixed-function stereo engines — in two
-configurations, with every target required to produce byte-identical output.**
+**Semi-Global Matching stereo, measured across eleven processing units from
+four silicon vendors — five GPUs, three CPU classes, a DSP and two
+fixed-function stereo engines — in two configurations, with every target
+required to produce byte-identical output.**
 
 ![SGM on real stereo imagery](docs/panels/motorcycle_real.png)
 
@@ -167,6 +168,8 @@ work, this is not a coarse-to-fine search), census 9×7 on a **SobelX-prefiltere
 image, **eight paths** with direction-weighted P1 (40 h / 20 v / 10 diag),
 P2=200 saturating, half-resolution output. Same acceptance model: its own scalar
 oracle defines a golden, and every implementation must reproduce it byte-exactly.
+
+![Configuration B results](docs/results_b.png)
 
 | target | ms | fps | MDE/s (work) † |
 |---|---|---|---|
