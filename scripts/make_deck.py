@@ -259,15 +259,14 @@ try:
     sl.shapes.add_picture("docs/results_b.png", Inches(1.35), Inches(1.55), height=Inches(4.95))
 except Exception:
     pass
-textbox(sl, .6, 6.6, 12.2, .8,
+textbox(sl, .6, 6.5, 12.2, .7,
         "Same roster, same acceptance model: every row bit-exact to golden bcb9cb0bd6f49799, same implementation "
         "tiers as Configuration A (tuned CUDA / OpenCL / NEON+OpenMP / HVX, scalar oracle as the floor). "
         "At matched tiers it ranks like Configuration A - the CPU cluster leads one NSP ~1.3x on both; "
-        "per engine, one NSP beats one A78C core 1.60x.", 12, False, INK)
-textbox(sl, .6, 7.12, 12.2, .4,
-        "MDE/s is the work-performed convention - both scales count: (0.384 + 1.536) Mpx x 64 / time. "
-        "The OFA engines cannot run this configuration (no 8-path, weighted-P1 or two-scale controls).",
-        11, False, MUTED)
+        "per engine, one NSP beats one A78C core 1.60x.", 11, False, INK)
+textbox(sl, .6, 7.18, 12.2, .3,
+        "MDE/s is the work-performed convention - both scales count. The OFA engines cannot run this "
+        "configuration (no 8-path, weighted-P1 or two-scale controls).", 10, False, MUTED)
 
 prs.save("docs/sgm-results.pptx")
 print("wrote docs/sgm-results.pptx —", len(prs.slides.__iter__.__self__._sldIdLst), "slides")
