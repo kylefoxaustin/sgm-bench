@@ -143,10 +143,10 @@ rows = sorted(rows, key=lambda r: (r[2] is None, r[2] or 0))
 # so the summary table computes MDE/s at THEIR D (128) instead of D=64, and
 # labels them throughput-only rather than "Nx faster than the scalar ref".
 HWNAMES = {"NVIDIA Thor OFA": 128, "NVIDIA Orin AGX OFA": 128}
-tbl = s1.shapes.add_table(len(rows)+1, 6, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
-for i, w in enumerate((3.5, 1.1, 1.7, 1.5, 1.9, 2.4)): tbl.columns[i].width = Inches(w)
+tbl = s1.shapes.add_table(len(rows)+1, 7, Inches(.6), Inches(1.72), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.3, 0.9, 1.7, 1.1, 1.5, 1.6, 2.0)): tbl.columns[i].width = Inches(w)
 for r in range(len(rows)+1): tbl.rows[r].height = Inches(0.27)
-hdr = ("processing unit", "class", "runtime", "fps", "MDE/s", "vs scalar reference")
+hdr = ("processing unit", "class", "runtime", "fps", "MDE/s", "DRAM GB/s *", "vs scalar reference")
 for c, t in enumerate(hdr):
     cell = tbl.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
@@ -154,16 +154,19 @@ for c, t in enumerate(hdr):
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 base = 9188.0
 for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
+    BW = {"NVIDIA RTX 5090 GPU":"587 / 1,385","NVIDIA Thor GPU":"145 / 249",
+          "NVIDIA Orin AGX GPU":"87 / 175","Hexagon v73 NSP":"6.8 / 28"}
+    bw = BW.get(lab, "—")
     hwd = HWNAMES.get(lab)
     if lab in HWNAMES and ms is None:
-        vals = (lab, cls, "stereo mode removed", "—", "—", "UNSUPPORTED_FEATURE")
+        vals = (lab, cls, "stereo mode removed", "—", "—", "—", "UNSUPPORTED_FEATURE")
     elif lab in HWNAMES:
         vals = (lab, cls, f"{ms:,.2f} ms (D={hwd})", f"{1000/ms:,.1f}",
-                f"{W*H*hwd/ms/1000:,.0f}", "throughput only")
+                f"{W*H*hwd/ms/1000:,.0f}", "—", "throughput only")
     else:
         vals = ((lab, cls, "—" if ms is None else f"{ms:,.2f} ms",
              "—" if ms is None else f"{1000/ms:,.1f}",
-             "—" if ms is None else f"{mde(ms):,.0f}",
+             "—" if ms is None else f"{mde(ms):,.0f}", bw,
              "not yet measured" if ms is None else f"{base/ms:,.0f}x faster"))
     for c, t in enumerate(vals):
         cell = tbl.cell(r, c); cell.text = str(t)
@@ -184,8 +187,9 @@ for i, (big, small) in enumerate(CALLOUTS):
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
 textbox(s1, .6, 7.28, 12.2, .3,
-        "MDE/s = W x H x D / runtime.  Valid for comparing implementations at a FIXED configuration; "
-        "it is the wrong unit for CHOOSING one, because the optics fix D.", 10, False, MUTED)
+        "* DRAM GB/s = achieved (DERIVED: modelled bytes / measured phase time) / ceiling (MEASURED, streaming-copy probe). "
+        "Aggregation streams 1.46 GB/frame at 1080p D=64. Blank = not instrumented. "
+        "MDE/s = W x H x D / runtime — right for comparing implementations, wrong for choosing a configuration.", 10, False, MUTED)
 
 # ---------------- one slide per unit ----------------
 for lab, cls, ms, sil, notes in UNITS:
