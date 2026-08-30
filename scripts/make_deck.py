@@ -346,46 +346,54 @@ textbox(sC, .6, 1.1, 12.2, .5,
         "C->B isolates RESOLUTION - one knob each. Golden 0f0961d623009df5, every software row bit-exact.",
         12, False, MUTED)
 
-CROWS = [
- ("NVIDIA OFA on Thor (ds=2)",   "HW",     4.08,  None, "1.21  (time only — own algorithm)"),
- ("NVIDIA RTX 5090",             "GPU",   11.96, 13870, "1.32"),
- ("NVIDIA OFA on Orin (ds=2)",   "HW",    19.51,  None, "1.31  (time only — own algorithm)"),
- ("NVIDIA Thor",                 "GPU",   56.7,   2928, "1.26"),
- ("NVIDIA Orin AGX",             "GPU",   96.9,   1711, "1.33"),
- ("Cortex-A720 x8",              "CPU",  239.6,    692, "1.01  <- see note"),
- ("Cortex-A78C x8 (6 threads)",  "CPU",  291.8,    569, "1.38"),
- ("Hexagon v73 NSP",             "DSP",  372.4,    446, "1.35  (and constant MDE/s vs B)"),
- ("Mali-G720 (10 CU)",           "GPU",  509.4,    326, "1.34"),
- ("Cortex-A78C x1",              "CPU",  595.3,    279, "1.34"),
- ("Cortex-A720 x1",              "CPU",  643.1,    258, "1.37"),
- ("Cortex-A55 x6",               "CPU",  844.8,    196, "1.32"),
- ("Cortex-A55 x1",               "CPU", 2954.0,     56, "1.34"),
- ("Mali-G310 (1 CU)",            "GPU", 3657.0,     45, "1.35"),
- ("scalar reference",            "REF",18020.0,    9.2, "1.26"),
+CROWS = [  # label, class, ms, MDE/s(work) — same columns and types as the Config B table
+ ("NVIDIA OFA on Thor (ds=2)",   "HW",     4.08,  None),
+ ("NVIDIA RTX 5090",             "GPU",   11.96, 13870),
+ ("NVIDIA OFA on Orin (ds=2)",   "HW",    19.51,  None),
+ ("NVIDIA Thor",                 "GPU",   56.7,   2928),
+ ("NVIDIA Orin AGX",             "GPU",   96.9,   1711),
+ ("Cortex-A720 x8",              "CPU",  239.6,    692),
+ ("Cortex-A78C x8 (6 threads)",  "CPU",  291.8,    569),
+ ("Hexagon v73 NSP",             "DSP",  372.4,    446),
+ ("Mali-G720 (10 CU)",           "GPU",  509.4,    326),
+ ("Cortex-A78C x1",              "CPU",  595.3,    279),
+ ("Cortex-A720 x1",              "CPU",  643.1,    258),
+ ("Cortex-A55 x6",               "CPU",  844.8,    196),
+ ("Cortex-A55 x1",               "CPU", 2954.0,     56),
+ ("Mali-G310 (1 CU)",            "GPU", 3657.0,     45),
+ ("scalar reference",            "REF",18020.0,    9.2),
 ]
-tblC = sC.shapes.add_table(len(CROWS)+1, 5, Inches(.6), Inches(1.66), Inches(12.1), Inches(0.4)).table
-for i, w in enumerate((3.8, 1.0, 2.0, 2.2, 3.1)): tblC.columns[i].width = Inches(w)
-for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.24)
-for c, t in enumerate(("processing unit", "class", "runtime", "MDE/s (work)", "xB  (pixels predict 1.35x)")):
+tblC = sC.shapes.add_table(len(CROWS)+1, 6, Inches(.6), Inches(1.66), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.6, 1.0, 1.9, 1.3, 1.9, 2.4)): tblC.columns[i].width = Inches(w)
+for rr_ in range(len(CROWS)+1): tblC.rows[rr_].height = Inches(0.25)
+for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (work)", "vs scalar reference")):
     cell = tblC.cell(0, c); cell.text = t
     pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
-for rr_, (lab, cls, ms, mdev, xb) in enumerate(CROWS, start=1):
-    cells = (lab, cls, "—" if ms is None else f"{ms:,.1f} ms",
-             "—" if mdev is None else (f"{mdev:,}" if mdev >= 10 else f"{mdev}"), xb)
-    for c, t in enumerate(cells):
+baseC = 18020.0
+for rr_, (lab, cls, ms, mdev) in enumerate(CROWS, start=1):
+    fps = 1000.0/ms
+    if mdev is None:
+        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.0f}", "—",
+                f"{baseC/ms:,.0f}x (time only)")
+    else:
+        vals = (lab, cls, f"{ms:,.2f} ms", f"{fps:,.1f}" if fps >= 10 else f"{fps:.2f}",
+                f"{mdev:,}" if mdev >= 10 else f"{mdev}",
+                f"{baseC/ms:,.0f}x faster" if ms != baseC else "the floor (1x)")
+    for c, t in enumerate(vals):
         cell = tblC.cell(rr_, c); cell.text = str(t)
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
         run.font.size = Pt(10.5); run.font.color.rgb = INK
-        run.font.bold = (c in (0, 3))
-        if c == 1: run.font.color.rgb = ACC[cls]; run.font.bold = True
+        run.font.bold = (c in (0, 4)) and mdev is not None
+        if c == 1:
+            run.font.color.rgb = ACC[cls]; run.font.bold = True
 
 textbox(sC, .6, 5.95, 12.2, .7,
         "Two clean statements on the 5090, one knob each:  A -> C (same input images, algorithm swap): "
         "3.46 -> 11.96 ms - the two-scale 8-path algorithm costs ~3.5x the single-scale 4-path one.  "
-        "C -> B (same algorithm, 1080 -> 800 rows): 11.96 -> 9.08 ms - the smaller frame buys back exactly "
-        "its pixel share.", 11.5, True, INK)
+        "C -> B (same algorithm, 1080 -> 800 rows): 11.96 -> 9.08 ms. Row for row, C/B ratios cluster at the "
+        "1.35x the pixels predict (5090 1.32, Thor 1.26, NSP 1.348, Malis 1.34-1.35) - one exception below.", 11.5, True, INK)
 textbox(sC, .6, 6.68, 12.2, .5,
         "The exception is the finding: the A720 CLUSTER runs C at B's wall-clock (1.01x) while its single core "
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
