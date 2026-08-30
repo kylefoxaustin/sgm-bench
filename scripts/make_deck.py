@@ -155,7 +155,11 @@ for c, t in enumerate(hdr):
 base = 9188.0
 for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
     BW = {"NVIDIA RTX 5090 GPU":"587 / 1,385","NVIDIA Thor GPU":"145 / 249",
-          "NVIDIA Orin AGX GPU":"87 / 175","Hexagon v73 NSP":"6.8 / 28"}
+          "NVIDIA Orin AGX GPU":"87 / 175","Hexagon v73 NSP":"6.8 / 28",
+          "Cortex-A720 x8":"6.6 / 46.3","Cortex-A78C x8":"3.4 / —",
+          "Mali-G720":"16.1 / 46.3","Cortex-A720 x1 @2.5GHz":"1.1 / 46.3",
+          "Cortex-A78C x1":"1.0 / —","Cortex-A55 x6":"1.1 / 13.7",
+          "Cortex-A55 x1 @1.8GHz":"0.2 / 13.7","Mali-G310":"1.6 / 13.7"}
     bw = BW.get(lab, "—")
     hwd = HWNAMES.get(lab)
     if lab in HWNAMES and ms is None:
@@ -187,7 +191,7 @@ for i, (big, small) in enumerate(CALLOUTS):
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
 textbox(s1, .6, 7.28, 12.2, .3,
-        "* DRAM GB/s = achieved (DERIVED: modelled bytes / measured phase time) / ceiling (MEASURED, streaming-copy probe). "
+        "* DRAM GB/s = achieved (DERIVED: modelled bytes / measured phase time) / ceiling (MEASURED, copy probe per board; CPU+Mali share one bus). GPUs run at 42-58% of ceiling (memory-bound); CPUs/Malis at 8-37% (compute-bound). "
         "Aggregation streams 1.46 GB/frame at 1080p D=64. Blank = not instrumented. "
         "MDE/s = W x H x D / runtime — right for comparing implementations, wrong for choosing a configuration.", 10, False, MUTED)
 

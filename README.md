@@ -47,15 +47,15 @@ MEASURED, 1920×1080, D=64, 4 paths, 9×7 census. Full provenance in `REPORT.md`
 | **NVIDIA RTX 5090 GPU** (Blackwell, 170 SM, CUDA) | GPU | — | 3.46 | **38,356** | 587 / 1,385 | — |
 | **NVIDIA Thor GPU** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | 145 / 249 | — |
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | 87 / 175 | — |
-| 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | — | 423 |
-| 8× Cortex-A78C (IQ-9075) | CPU | 6 | 98.0 | 1,354 | — | 395 |
+| 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 6.6 / 46.3 | 423 |
+| 8× Cortex-A78C (IQ-9075) | CPU | 6 | 98.0 | 1,354 | 3.4 / — | 395 |
 | **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 148.4 | **894** | 6.8 / 28 | — |
-| Mali-G720, 10 CU | GPU | — | 256.0 | 518 | — | — |
-| 1× Cortex-A720 @2.5 GHz | CPU | 1 | 313.6 | 423 | — | 423 |
-| 1× Cortex-A78C | CPU | 1 | 336.1 | 395 | — | 395 |
-| 6× Cortex-A55 @1.8 GHz (i.MX 95) | CPU | 6 | 341.3 | 389 | — | 84 |
-| 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | — | 84 |
-| Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | — | — |
+| Mali-G720, 10 CU | GPU | — | 256.0 | 518 | 16.1 / 46.3 | — |
+| 1× Cortex-A720 @2.5 GHz | CPU | 1 | 313.6 | 423 | 1.1 / 46.3 | 423 |
+| 1× Cortex-A78C | CPU | 1 | 336.1 | 395 | 1.0 / — | 395 |
+| 6× Cortex-A55 @1.8 GHz (i.MX 95) | CPU | 6 | 341.3 | 389 | 1.1 / 13.7 | 84 |
+| 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | 0.2 / 13.7 | 84 |
+| Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | 1.6 / 13.7 | — |
 | scalar reference, 1× A55 | floor | 1 | 9188.0 | 14.4 | — | — |
 | *NVIDIA OFA on Thor* † | fixed-fn | — | *9.4 (D=128)* | *28,402* | — | — |
 | *NVIDIA OFA on Orin AGX* † | fixed-fn | — | *72.6 (D=128)* | *3,654* | — | — |
@@ -67,10 +67,16 @@ volume is 265 MB, touched four times). The *ceiling* is MEASURED on each part
 with a streaming-copy probe (`tools/gpu_bandwidth.cu`); the *achieved* figure is
 DERIVED — the kernel's exact modelled byte count divided by the measured phase
 time — not read from DRAM counters. The Hexagon pair is the qualcomm session's
-own probe and model. Blank cells are simply **not instrumented**, not zero: no
-CPU or Mali run has had its memory traffic measured, and an empty cell beats an
-estimate. Across a 7.9× spread in GPU bandwidth, utilisation stays in a 42–58%
-band — bandwidth predicts most of this ranking, which is the point of the column.
+own probe and model; CPU/Mali ceilings come from `tools/cpu_bandwidth.c` run on
+each board (13.7 GB/s on the i.MX 95, 46.3 on the O6 — CPU and Mali share one
+LPDDR bus, so one probe serves both rows). The A78C ceiling is unmeasured (that
+board is another session's) and its cell says so rather than guessing.
+
+The column tells one story twice. The NVIDIA GPUs sit at **42–58% of their
+ceiling** — memory-bound, which is why their optimisation ended at traffic
+reduction. The CPUs and Malis sit at **8–37%** — *not* bandwidth-bound, which is
+why their wins came from arithmetic instead: vectorised argmin, blocking, lane
+tricks. Same algorithm, opposite walls, visible in one column.
 
 † Dedicated stereo engines measured beside the GPUs they share a die with —
 **throughput only, not bit-exact to the golden** (VPI's SGM is NVIDIA's own
