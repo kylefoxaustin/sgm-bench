@@ -1,0 +1,22 @@
+#include "AEEStdDef.idl"
+#include "remote.idl"
+
+const string IDL_VERSION = "1.0.0";
+
+interface sgmms : remote_handle64 {
+   /* Configuration B: multiscale SGM (two full 64-d scales, cost fusion,
+    * Sobel-prefiltered census, 8 direction-weighted paths, saturating adds).
+    * Input W x H grey pair, output (W/2) x (H/2) integer disparity.
+    * scratch is caller-allocated ION. cycles = DSP PCYCLE delta. */
+   long run(in sequence<uint8> left,
+            in sequence<uint8> right,
+            in long W, in long H,
+            in long nthreads,
+            in long use_hvx,
+            inrout sequence<uint8> scratch,
+            rout sequence<uint8> disp,
+            rout uint64 cycles,
+            rout sequence<uint64> phases);
+
+   long scratch_bytes(in long W, in long H, rout uint64 bytes);
+};

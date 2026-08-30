@@ -1,0 +1,20 @@
+NO_QURT_INC = 1
+SGMD ?= 64
+CC_FLAGS += -DSGM_D=$(SGMD)
+CXX_FLAGS += -DSGM_D=$(SGMD)
+UTILS_DIR=$(HEXAGON_SDK_ROOT)/utils/examples
+
+BUILD_LIBS += libsgmdsp_skel
+BUILD_DLLS += libsgmdsp_skel
+
+libsgmdsp_skel_QAICIDLS += inc/sgmdsp
+libsgmdsp_skel_C_SRCS += $(OBJ_DIR)/sgmdsp_skel
+libsgmdsp_skel.C_SRCS += src/sgmdsp_imp.c
+libsgmdsp_skel_LD_FLAGS += -L$(HEXAGON_SDK_ROOT)/libs/worker_pool/hexagon_Release_toolv19_v73 -lworker_pool
+
+
+BUILD_COPIES += \
+   $(DLLS) \
+   $(EXES) \
+   $(LIBS) \
+   $(SHIP_DIR)/ ;

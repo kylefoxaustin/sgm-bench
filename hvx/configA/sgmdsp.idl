@@ -1,0 +1,22 @@
+#include "AEEStdDef.idl"
+#include "remote.idl"
+
+const string IDL_VERSION = "1.2.3";
+
+interface sgmdsp : remote_handle64 {
+   /* Full SGM: census -> cost -> 4-path aggregation -> argmin.
+    * scratch is caller-allocated (ION) so the DSP never heap-allocates
+    * the 100s of MB this needs. cycles is the DSP-side PCYCLE delta. */
+   long run(in sequence<uint8> left,
+            in sequence<uint8> right,
+            in long W, in long H,
+            in long nthreads,
+            in long use_hvx,
+            inrout sequence<uint8> scratch,
+            rout sequence<uint8> disp,
+            rout uint64 cycles,
+            rout sequence<uint64> phases);
+
+   /* Bytes of scratch the caller must allocate for a given W,H. */
+   long scratch_bytes(in long W, in long H, rout uint64 bytes);
+};
