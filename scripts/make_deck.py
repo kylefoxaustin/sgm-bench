@@ -268,5 +268,103 @@ textbox(sl, .6, 7.18, 12.2, .3,
         "MDE/s is the work-performed convention - both scales count. The OFA engines cannot run this "
         "configuration (no 8-path, weighted-P1 or two-scale controls).", 10, False, MUTED)
 
+# ---------------- Configuration B: one slide per unit ----------------
+# Same treatment as the primary configuration: the arithmetic that produced the
+# number, then what the measurement means. MDE/s is the WORK-PERFORMED
+# convention -- both full-search scales count.
+MPX_WORK = 0.384 + 1.536   # Mpx actually searched: 960x400 + 1920x800
+BD = 64
+def bmde(ms): return MPX_WORK * 1e6 * BD / (ms / 1000.0) / 1e6
+
+BUNITS = [
+ ("NVIDIA RTX 5090", "GPU", 9.06, "CUDA, tuned  |  second independent run: 9.59 ms (shared, unlocked card)", [
+   "The fastest Configuration B target: 110 fps of two-scale, 8-path, weighted-P1",
+   "SGM on a workload designed for a fixed-function embedded block.",
+   "The port is a GENERIC path kernel: one warp owns one path line in any of the 8",
+   "directions, line start derived from the direction pair, P1 passed per launch",
+   "so the direction weighting costs nothing. Bit-exact on the first full run.",
+   "It lacks the primary kernel's path-pairing pass, so this row is the",
+   "conservative side of what the card can do."]),
+ ("NVIDIA Thor", "GPU", 45.1, "CUDA, same kernel, sm_110", [
+   "22 fps embedded. Same generic 8-direction kernel as the 5090, bit-exact.",
+   "The gap to the 5090 (5.0x) is close to the bandwidth ratio of the parts,",
+   "consistent with the Configuration A finding that tuned SGM converges on",
+   "memory traffic once the arithmetic is done."]),
+ ("NVIDIA Orin AGX", "GPU", 72.8, "CUDA, same kernel, sm_87", [
+   "14 fps on the previous embedded generation, bit-exact, no per-part tuning."]),
+ ("Cortex-A78C x8 (6 threads)", "CPU", 211.9, "Qualcomm IQ-9075, NEON+OpenMP  |  single core: 442.60 ms", [
+   "The best programmable embedded result -- and it was measured by the",
+   "collaborating session running multiscale/sgm_ms_neon.c UNMODIFIED on their",
+   "silicon, golden every run. Medians of five invocations on a board that is",
+   "bimodal by ~9% between invocations; medians quoted, never minima.",
+   "This row is also what corrected the record: at the oracle tier the NSP",
+   "appeared to lead the cluster 3.29x; at the matched NEON tier the cluster",
+   "leads 1.30x. A cross-tier comparison is a cross-configuration comparison",
+   "wearing a platform comparison's clothes."]),
+ ("Cortex-A720 x8", "CPU", 238.3, "Radxa Orion O6, NEON+OpenMP  |  single core: 470.9 ms", [
+   "The NEON tier is 5.8x the scalar oracle on this cluster. The kernel keeps",
+   "Configuration A's register scheme and adds the saturating step, the",
+   "direction-weighted P1 per sweep, and a uint16 sum plane for 8-path S.",
+   "OpenMP is output-neutral by construction: rows for horizontal sweeps,",
+   "columns-within-row for vertical and diagonal, so the hash cannot move",
+   "with the thread count."]),
+ ("Hexagon v73 NSP", "DSP", 276.3, "Qualcomm IQ-9075, HVX, 4 contexts  |  median of 5, 0.75% spread, golden 10/10", [
+   "Contributed port, independently re-verified (three further gated runs,",
+   "269-272 ms). Per ENGINE this is the embedded win: one NSP beats one A78C",
+   "core 1.60x at matched tiers.",
+   "Diagonals use a sync-free chain-band decomposition -- workers own equal-pixel",
+   "bands of diagonal chains, S worker-disjoint, bit-exact with NO barriers.",
+   "The two-scale merge is fused into the stage-2 cost build, saving ~200 MB",
+   "of traffic per frame. The 4-HVX-context knee holds here too: 6 threads is",
+   "29% WORSE than 4.",
+   "P2=200 overflowed their packed (S<<6)|d argmin key at S=2040 -- the warned",
+   "saturation failure mode, one stage downstream of the warned location.",
+   "Redesigned and sim-proven on tie-storms at the cap before shipping."]),
+ ("Mali-G720", "GPU", 380.0, "Immortalis, 10 CU, OpenCL 3.0", [
+   "One 16-work-item work-group owns each path line; barriers are uniform",
+   "because every work-item in the group walks the same line trajectory.",
+   "Bit-exact on the first attempt. Same caveat as Configuration A: a",
+   "single-chain-per-line kernel is an effort floor for this part, not a",
+   "verdict on it."]),
+ ("Cortex-A55 x6", "CPU", 640.1, "i.MX 95 FRDM, 1.8 GHz, NEON+OpenMP  |  single core: 2,201 ms", [
+   "The anchor platform runs the full two-scale 8-path configuration at 1.56 fps",
+   "-- 22x the scalar oracle on the same six cores' single-core floor.",
+   "The saturating NEON step (vqaddq_u8 against P2=200) is the part Configuration",
+   "A never needed: its static assert guarantees no overflow at P2=192, and",
+   "Configuration B is the configuration that breaks that assumption."]),
+ ("Mali-G310", "GPU", 2704.0, "1 CU, OpenCL 3.0", [
+   "Same OpenCL kernel as the G720, same hash, one compute unit."]),
+ ("scalar reference", "REF", 14265.0, "1x Cortex-A55, plain C, single thread", [
+   "multiscale/sgm_ms_ref.c defines golden bcb9cb0bd6f49799 and pins every",
+   "contestable choice in its header: ties to lowest d, saturation at 255,",
+   "2x2 box downsample, (x/2, y/2, d/2) merge indexing, x-d<0 costs 63.",
+   "Every row above reproduces it byte-exactly or its timing is void."]),
+]
+
+for lab, cls, ms, sil, notes in BUNITS:
+    sl = prs.slides.add_slide(blank)
+    textbox(sl, .6, .35, 11, .7, lab, 32, True, ACC[cls])
+    textbox(sl, 10.4, .5, 2.4, .4, "CONFIGURATION B", 12, True, MUTED)
+    textbox(sl, .6, 1.0, 11.9, .4, sil, 13, False, MUTED)
+
+    textbox(sl, .6, 1.7, 11.5, .4, "The calculation (work-performed convention)", 16, True)
+    calc = (f"MDE/s  =  (0.384 + 1.536) Mpx x {BD} / runtime      (both full-search scales count)\n"
+            f"        =  {MPX_WORK*1e6*BD:,.0f} disparity estimations / {ms/1000:.5f} s\n"
+            f"        =  {bmde(ms):,.0f} million disparity estimations per second\n\n"
+            f"frame rate  =  1000 / {ms:,.2f}  =  {1000/ms:,.2f} fps   (960x400 disparity map out)")
+    tf = textbox(sl, .6, 2.15, 11.9, 1.7, calc, 14)
+    for p in tf.paragraphs:
+        for rr in p.runs: rr.font.name = "Consolas"
+
+    textbox(sl, .6, 4.0, 11.5, .4, "What the measurement means", 16, True)
+    tf = textbox(sl, .6, 4.4, 11.9, 2.5, notes[0], 13)
+    for extra in notes[1:]:
+        p = tf.add_paragraph(); rr = p.add_run(); rr.text = extra
+        rr.font.size = Pt(13); rr.font.color.rgb = INK; rr.font.name = "Calibri"
+
+    textbox(sl, .6, 7.05, 11.9, .4,
+            "MEASURED -- median of the timed frames, bit-exact to golden bcb9cb0bd6f49799 in the same run.",
+            11, False, MUTED)
+
 prs.save("docs/sgm-results.pptx")
 print("wrote docs/sgm-results.pptx —", len(prs.slides.__iter__.__self__._sldIdLst), "slides")
