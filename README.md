@@ -143,6 +143,30 @@ trajectory, including a DERIVED ceiling that was wrong by 4×.
 
 ---
 
+## Configuration B: multi-scale, 8-path
+
+A second benchmark configuration (`multiscale/`), deliberately harder and more
+embedded-flavoured than the primary one: **1920×800 in → 960×400 out**, a full
+64-disparity SGM at *both* half and full resolution with the two **data costs
+averaged** before aggregation (multi-scale cost fusion — both scales do full
+work, this is not a coarse-to-fine search), census 9×7 on a **SobelX-prefiltered**
+image, **eight paths** with direction-weighted P1 (40 h / 20 v / 10 diag),
+P2=200 saturating, half-resolution output. Same acceptance model: its own scalar
+oracle defines a golden, and every implementation must reproduce it byte-exactly.
+
+| target | ms | fps | MDE/s (work) † |
+|---|---|---|---|
+| **NVIDIA RTX 5090** (CUDA) | 9.06 | **110.3** | 13,559 |
+| **NVIDIA Thor** (CUDA) | 45.1 | 22.2 | 2,723 |
+| **NVIDIA Orin AGX** (CUDA) | 72.8 | 13.7 | 1,688 |
+| 8× Cortex-A720 — *scalar+OpenMP, untuned floor* | 1,373 | 0.73 | 90 |
+| 6× Cortex-A55 — *scalar+OpenMP, untuned floor* | 4,357 | 0.23 | 28 |
+
+† work-performed convention: both scales count — (0.384 + 1.536) Mpx × 64 / time.
+All rows bit-exact to golden `bcb9cb0bd6f49799`. The CUDA port is a first pass
+without the primary kernel's path-pairing and traffic work; the CPU rows are the
+parallelised oracle, not a NEON port — floors in the established sense.
+
 ## On real stereo imagery
 
 Seven of the targets are also verified on a **real calibrated stereo capture** —
