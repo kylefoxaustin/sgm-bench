@@ -4,6 +4,16 @@
 vendors — CPUs, GPUs, a DSP and fixed-function stereo engines — with every
 target required to produce byte-identical output.**
 
+![SGM on real stereo imagery](docs/panels/motorcycle_real.png)
+
+*A real calibrated stereo capture (Middlebury 2014 "Motorcycle"), the dense
+disparity map this benchmark computes from it, and the error against structured-
+light ground truth — with every processor's time for the identical, byte-exact
+result. That is the whole repo in one picture: same answer everywhere, only the
+time differs.*
+
+---
+
 ## Why SGM is hard
 
 Stereo matching is easy to state and awkward to make fast. For every pixel you
@@ -182,8 +192,6 @@ Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical gold
 | Mali-G720 (10 CU) | 296.17 | 640 |
 | 6× Cortex-A55 | 590.50 | 321 |
 | Mali-G310 (1 CU) | 2340.17 | 81 |
-
-![SGM on real stereo imagery](docs/panels/motorcycle_real.png)
 
 Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**,
 scoring the leftmost D columns as excluded because `x−d < 0` has no
