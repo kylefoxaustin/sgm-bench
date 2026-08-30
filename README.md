@@ -297,7 +297,7 @@ the A720 cluster was not.
 
 ## On real stereo imagery
 
-Seven of the targets are also verified on a **real calibrated stereo capture** —
+Eight of the targets are also verified on a **real calibrated stereo capture** —
 Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical golden
 `e8a95242882013f0`:
 
@@ -306,6 +306,7 @@ Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical gold
 | NVIDIA RTX 5090 | 3.32 | 57,137 |
 | NVIDIA Thor | 15.94 | 11,901 |
 | NVIDIA Orin AGX | 23.91 | 7,934 |
+| **Hexagon v73 NSP** | 179.23 | 1,058 |
 | 8× Cortex-A720 | 112.44 | 1,687 |
 | Mali-G720 (10 CU) | 296.17 | 640 |
 | 6× Cortex-A55 | 590.50 | 321 |
@@ -313,10 +314,11 @@ Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical gold
 
 Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**,
 scoring the leftmost D columns as excluded because `x−d < 0` has no
-correspondent. An earlier revision of this scene was **independently scored by another party's
-implementation on hardware we have never touched** — against the ground truth
-rather than against our map — agreeing to 0.05 points on all three metrics. The
-current scene's figures are ours alone so far.
+correspondent. The trio has been **independently reproduced by another party on hardware we
+have never touched** — their NSP run on this exact scene scores bad>1px 16.18%,
+bad>2px 11.18%, MAE 3.35 against the dense ground truth, agreeing with our
+figures to 0.05 points. (An earlier revision of the scene was independently
+scored the same way.)
 
 ⭐ The real scene is the **accuracy** reference and pins the hash-critical
 tie-break rule **720× harder** than synthetic (14,417 tied-minimum pixels

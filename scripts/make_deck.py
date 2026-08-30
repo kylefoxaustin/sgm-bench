@@ -324,9 +324,9 @@ try:
 except Exception:
     pass
 textbox(sl, .6, 6.55, 12.2, .9,
-        "All seven targets produce the identical golden e8a95242882013f0 — the picture is the same, only the "
-        "time differs. Accuracy vs dense ground truth: bad>1px 16.2%, bad>2px 11.2%, MAE 3.35, independently "
-        "reproduced by another party on hardware we have never touched.", 12, False, INK)
+        "All eight targets produce the identical golden e8a95242882013f0 — the picture is the same, only the "
+        "time differs (NSP: 179.23 ms, ~1,058 MDE/s). Accuracy vs dense ground truth: bad>1px 16.2%, bad>2px 11.2%, "
+        "MAE 3.35 — independently reproduced to 0.05 points on hardware we have never touched.", 12, False, INK)
 textbox(sl, .6, 7.12, 12.2, .4,
         "Real imagery is a better ACCEPTANCE test, not just a more realistic one: 14,417 pixels have a tied "
         "minimum here against 20 on the synthetic scene, so the hash-critical tie-break rule is pinned 720x harder.",
