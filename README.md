@@ -169,13 +169,21 @@ oracle defines a golden, and every implementation must reproduce it byte-exactly
 | **NVIDIA RTX 5090** (CUDA) | 9.06 | **110.3** | 13,559 |
 | **NVIDIA Thor** (CUDA) | 45.1 | 22.2 | 2,723 |
 | **NVIDIA Orin AGX** (CUDA) | 72.8 | 13.7 | 1,688 |
-| 8× Cortex-A720 — *scalar+OpenMP, untuned floor* | 1,373 | 0.73 | 90 |
-| 6× Cortex-A55 — *scalar+OpenMP, untuned floor* | 4,357 | 0.23 | 28 |
+| **Mali-G720**, 10 CU (OpenCL) | 380.0 | 2.63 | 323 |
+| 8× Cortex-A720 (NEON) | 238.3 | 4.20 | 516 |
+| 1× Cortex-A720 (NEON) | 470.9 | 2.12 | 261 |
+| 6× Cortex-A55 (NEON) | 640.1 | 1.56 | 192 |
+| 1× Cortex-A55 (NEON) | 2,201 | 0.45 | 56 |
+| Mali-G310, 1 CU (OpenCL) | 2,704 | 0.37 | 45 |
+| scalar reference, 1× A55 | 14,265 | 0.07 | 8.6 |
+| *NVIDIA OFA engines* | *N/A* | — | *cannot run this configuration: no 8-path, weighted-P1 or two-scale controls* |
 
 † work-performed convention: both scales count — (0.384 + 1.536) Mpx × 64 / time.
-All rows bit-exact to golden `bcb9cb0bd6f49799`. The CUDA port is a first pass
-without the primary kernel's path-pairing and traffic work; the CPU rows are the
-parallelised oracle, not a NEON port — floors in the established sense.
+All rows bit-exact to golden `bcb9cb0bd6f49799` — the same implementation tiers
+as the primary configuration: tuned CUDA on the NVIDIA GPUs, OpenCL on the
+Malis, NEON+OpenMP on the Arm cores, and the plain-C oracle as the floor. The
+CUDA port lacks the primary kernel's path-pairing pass, so its rows are the
+conservative side of what those GPUs can do.
 
 ## On real stereo imagery
 
