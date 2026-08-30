@@ -175,7 +175,7 @@ for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
 # headline callouts, in the space under the table
 CALLOUTS = [("2,655x", "faster than the scalar reference,\nwith byte-identical output"),
             ("10.4x", "the fastest published Arm-CPU SGM,\nat matched D and matched path count"),
-            ("9 / 4 / 3 / 1", "targets / vendors / programming models\n/ one golden hash")]
+            ("10 / 4 / 3 / 1", "processors / vendors / programming models\n/ one golden hash")]
 for i, (big, small) in enumerate(CALLOUTS):
     x = .6 + i * 4.1
     textbox(s1, x, 6.35, 3.9, .6, big, 30, True, ACC["GPU"] if i == 0 else INK)
