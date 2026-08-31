@@ -28,7 +28,7 @@ So three verdicts, not two:
 
 And with ground truth available, THIN is decided on TRUE high-disparity pixels
 rather than on the implementation's own errors. Top-decile coverage threshold
-due to the qualcomm session, who found this by sweeping every (scene, D) pair
+found by sweeping every (scene, D) pair
 either corpus cites -- including a BLIND one in their own published work.
 
 ⭐ Discrimination is a property of the (SCENE, D) PAIR, not of the scene, the

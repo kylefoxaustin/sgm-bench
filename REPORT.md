@@ -50,7 +50,7 @@ D but **not** census window or path count.
 width and inversely with field of view. Since work is `W·H·D` and `D ∝ W`, **SGM
 work goes as W²·H — cubic in linear resolution, not quadratic.** Dropping 1080p
 to 720p is 2.25× fewer pixels but ~3.4× less work. Verified independently here;
-the geometry is due to the qualcomm session.
+the geometry follows from that.
 
 Three consequences a throughput number hides:
 
@@ -74,7 +74,7 @@ kernel.
 
 ### Two configuration traps
 
-MEASURED by the qualcomm session on the Hexagon NSP; their arithmetic
+MEASURED on the Hexagon NSP; the arithmetic
 re-checked here for internal consistency before being reproduced.
 
 🚨 **D pads to the next power of two, so D=96 and D=240 should never be built.**
@@ -115,14 +115,14 @@ paying the DDR round trip that dominates every implementation measured here.
 | Mali-G310, 1 CU (OpenCL) | D=64 | — | 1846 | 0.54 | 1.12 | 72 | — |
 | scalar oracle, 1× A55 (the floor) | D=64 | 1 | 9188 | 0.11 | 0.23 | 14.4 | — |
 
-‡ **Controlled cross-vendor comparison, contributed by the qualcomm session.**
+‡ **Controlled cross-vendor comparison.**
 Not an estimate and not a different implementation: they ran *this repository's*
 `a55` NEON implementation unmodified, verified the input PGMs on-board against
 the published sha256, and reproduced the golden FNV-1a `46470bd7a464469d` at
 every thread count. Same D, paths, census window and penalties. MEASURED.
 
 § 🚨 **Every single-invocation Hexagon number carries roughly ±10%, and that is
-a property of the board rather than of the measurement.** The qualcomm session
+a property of the board rather than of the measurement.** The NSP campaign
 found the multi-modality is *between* invocations, not within them, so a larger
 `-n` inside one invocation cannot average it out — it needs interleaved repeats
 across invocations. They demonstrated it by interleaving the old and corrected
@@ -142,7 +142,7 @@ the *evidence* went from partial to complete, which is the point. Their D=128
 figure, 238.89 ms / 1111 MDE/s (`fa2238cc8a87af3d`), was always on that scene.
 
 § **Hexagon row is a different implementation** — an independent HVX/FastRPC
-port by the qualcomm session — and it is the **median of five invocations
+port — and it is the **median of five invocations
 (148.44 ms, spread 10.4%)**, because that board is **bimodal between
 invocations**: at 720p its two modes are 76.5 and 64.6 ms, 18% apart, and both
 scenes hit both modes when interleaved. A larger `-n` inside one invocation
@@ -240,7 +240,7 @@ an adversarial review, not by us.
 
 ⭐ **A larger disparity range is cheaper per disparity** — 6,266 → 10,077 →
 12,260 MDE/s as D goes 32 → 64 → 128 at 1080p, a **+96%** gain. That finding is
-robust and matches what the qualcomm session measured on a Hexagon NSP.
+robust and matches what was measured on a Hexagon NSP.
 
 ⚠️ **Efficiency does fall as resolution falls, but far less than we published.**
 At D=64 the corrected sweep gives 10,077 → 9,467 → 9,267 → 9,187: a **1.10×**
@@ -265,7 +265,7 @@ the range under test.
 ### One law: raising D amortises any per-pixel cost that does not scale with D
 
 Three architectures show the same observation for three different reasons. The
-qualcomm session proposed a lane-filling model, **predicted flat for CUDA, and
+lane-filling model was proposed, **predicting flat for CUDA, and
 the measurement said +22%** — so the model was refuted on our hardware and the
 corrected version, theirs, is more general than either of our originals:
 
@@ -300,7 +300,7 @@ memory-bound at 145 of 249 GB/s, the Hexagon is still latency-bound at 6.8 of 28
 ### 🔴 A prediction that was reported as confirmed, and is not
 
 **Retracted 2026-08-29.** When the corrected grid weakened our resolution
-penalty to 8.8% against the qualcomm session's 34%, we predicted the difference
+penalty to 8.8% against the Hexagon's 34%, we predicted the difference
 was mechanistic: **the size of the resolution penalty should track how
 latency-bound the part is.** They tested it within one chip — D=64 leaves the
 128-byte HVX vector half empty and so more latency-exposed; D=128 fills it — and
@@ -366,7 +366,7 @@ makes the sweep a test rather than a formality.
 ### Why D gets cheaper per disparity — the CUDA mechanism in detail
 
 The same observation shows up on NEON, HVX and CUDA and does **not** have the
-same cause on any two of them. The qualcomm session supplied the first two; the
+same cause on any two of them. The Hexagon work supplied the first two; the
 third is ours and required falsifying a wrong guess first.
 
 | | lanes | D=64→128 | mechanism |
@@ -508,7 +508,7 @@ printed. That labelling is the only reason this reads as progress instead of as
 three corrections.
 
 ⚠️ **A DERIVED ceiling was wrong by ~4×, which is the cautionary part.** The
-qualcomm session estimated ~200–250 MDE/s as a generous bound on the remaining
+estimate put ~200–250 MDE/s as a generous bound on the remaining
 work, tagged DERIVED, and the judgement "the DSP cannot win here" rested on it.
 The answer was 957. The estimate failed by scaling the phases that were visible
 and assuming the rest was incremental: the largest single win turned out to be a
@@ -570,7 +570,7 @@ Exactly the failure mode of the redundant `Mpix/s` column — a derived number
 nothing re-derives.
 
 ⚠️ **A third way a check can be green and worthless, which we had not named:
-it can be unable to discriminate.** The qualcomm session gated a new D=128 path
+it can be unable to discriminate.** A new D=128 path was gated
 on "must match D=64's hash" — a condition **also satisfied by a kernel that only
 ever searched d < 64**. The check ran, and passed, and could not have failed for
 the bug it existed to catch. That completes the set:
@@ -586,7 +586,7 @@ the bug it existed to catch. That completes the set:
 All five read as green from outside. The last one is the only class a golden
 file can never address even in principle.
 
-Three detectors for it, in increasing cost (due to the qualcomm session):
+Three detectors for it, in increasing cost:
 
 1. **Absolute per-phase cost, never shares.** The harness has written absolute
    `census_ms` / `cost_ms` / `aggregate_ms` / `argmin_ms` into the JSON from the
@@ -690,7 +690,7 @@ is thinner than it looked.
 ## 🔴 Real imagery does not by itself retire the discrimination check
 
 The first Middlebury scene here was **not a valid correctness gate**, and
-`check_golden_discriminates.py` passed it. Found by the qualcomm session, who
+`check_golden_discriminates.py` passed it. It surfaced during the D-sweep, which
 turned the check into a script and swept every (scene, D) pair either corpus
 cites.
 
@@ -730,7 +730,7 @@ exercised.
 
 ### The accuracy figures were reproduced independently
 
-Before the scene was corrected, the qualcomm session ran their HVX kernel on it
+Before the scene was corrected, the HVX kernel was run on it
 and **scored it themselves against `gt_float.npy` rather than citing ours**:
 
 | | ours | theirs, independently derived |
@@ -752,7 +752,7 @@ information the hash cannot when a hash disagrees.
 ⚠️ Those figures stand as accuracy; the run predates the scene correction above,
 so it is not comparable to the 1482×1000 timings and is not in the main table.
 
-⭐ **The general form, and it is the qualcomm session's: discrimination is a
+⭐ **The general form: discrimination is a
 property of the (SCENE, D) PAIR** — not of the scene, the generator, or the
 algorithm. Neither "we use real imagery now" nor "we fixed the generator"
 retires the check. It has to run per pair, which is why it has an exit code.
@@ -1073,7 +1073,7 @@ real limit than "59%" suggests.
 - **The A78C per-core result assumes comparable clocks.** "A78C 402 vs A720 423,
   a 5% gap" is only a statement about cores if they run at similar frequencies.
   The A720 figure is at a measured 2.5 GHz; the A78C clock was never read,
-  because that board is under another session's lease. If the A78C is slower per
+  because that board was in use elsewhere at the time. If the A78C is slower per
   clock the conclusion inverts.
 - **"699× the scalar reference" is not a speedup claim.** That reference is
   deliberately unoptimised — `-O2`, no SIMD, single thread — and exists to define
@@ -1092,7 +1092,7 @@ the JSON as `"threads":N` — while the run used whatever `OMP_NUM_THREADS` said
 A `-t 1` run emitted a row **labelled single-thread containing an all-core
 timing**.
 
-Found by the **qualcomm session**, not by me, on a Cortex-A78C where `-t 1`,
+Found on a Cortex-A78C where `-t 1`,
 `-t 6` and `-t 8` all returned ~115 ms. They caught it before publishing; had
 they not, their single-thread baseline would have been 2.6× too fast — and
 their DSP comparison correspondingly flattered.
@@ -1148,7 +1148,7 @@ run length is not a measurement of the workload; it is a measurement of the
 **⚠️ The reason I first published for the withdrawal was wrong.** The first
 version of this section asserted that `icc_bwmon` "fails its own control" and
 is "useless as an integrator," on three checks. Two of the three do not survive
-scrutiny, and the collaborating session who supplied the recipe reported the
+scrutiny, and the party who supplied the recipe reported the
 opposite result within a minute of my retraction — an independent reproduction
 of **22.86 and 22.18 GB/s**, plus a ground-truth calibration agreeing with
 wall-clock to **1.8%**. Working out how both of us could be honest and

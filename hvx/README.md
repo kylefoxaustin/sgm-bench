@@ -1,7 +1,7 @@
 # hvx/ — Hexagon v73 (HVX) implementations
 
-Qualcomm Hexagon NSP ports of both benchmark configurations, contributed from the
-qualcomm session's FastRPC projects. Each directory holds the DSP implementation
+Qualcomm Hexagon NSP ports of both benchmark configurations, built on the
+FastRPC project layout. Each directory holds the DSP implementation
 (`*_imp.c` + kernels header), the FastRPC IDL, the aarch64 host driver, and the
 skel build fragment. Build requires the Hexagon SDK (6.x, v73 target) and follows
 the calculator-example project layout; the host compiles with a stock

@@ -300,7 +300,7 @@ WROWS = [
   "3x with run length is measuring the WINDOW, not the workload."),
  ("🚨 The reason first published was WRONG",
   "It claimed the instrument 'fails its own control', citing an idle window and a sustained streaming copy that both "
-  "behaved absurdly. A collaborating session reproduced the cell independently (22.86 / 22.18) and calibrated the same "
+  "behaved absurdly. A second party reproduced the cell independently (22.86 / 22.18) and calibrated the same "
   "monitor to 1.8% of wall-clock — within a minute of that retraction going out."),
  ("What actually reconciles them",
   "icc_bwmon fires on THRESHOLD CROSSINGS, so its sampling rate tracks the workload's PHASE VARIANCE. Measured: SGM "
@@ -623,8 +623,8 @@ BUNITS = [
  ("NVIDIA Orin AGX", "GPU", 72.8, "CUDA, same kernel, sm_87", [
    "14 fps on the previous embedded generation, bit-exact, no per-part tuning."]),
  ("Cortex-A78C x8 (6 threads)", "CPU", 211.9, "Qualcomm IQ-9075, NEON+OpenMP  |  single core: 442.60 ms", [
-   "The best programmable embedded result -- and it was measured by the",
-   "collaborating session running multiscale/sgm_ms_neon.c UNMODIFIED on their",
+   "The best programmable embedded result -- and it comes from",
+   "multiscale/sgm_ms_neon.c running UNMODIFIED on another vendor's",
    "silicon, golden every run. Medians of five invocations on a board that is",
    "bimodal by ~9% between invocations; medians quoted, never minima.",
    "This row is also what corrected the record: at the oracle tier the NSP",

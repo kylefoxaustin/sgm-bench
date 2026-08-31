@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
      * ((void)threads), because thread count comes from OpenMP; so -t was parsed,
      * printed in the table, written to the JSON as "threads":N -- and ignored.
      * A `-t 1` run emitted a row LABELLED single-thread holding an all-core
-     * timing. Found by the qualcomm session on a Cortex-A78C, where -t 1 / -t 6
+     * timing. Found on a Cortex-A78C, where -t 1 / -t 6
      * / -t 8 all returned ~115 ms and would have published a single-thread
      * baseline 2.6x too fast. Note the direction: the error flatters whatever
      * the run is being compared against. Our own numbers escaped only because

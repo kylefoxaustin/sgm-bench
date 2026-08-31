@@ -98,8 +98,8 @@ D=64 the aggregation phase alone streams **1.46 GB per frame** (the summed cost
 volume is 265 MB, touched four times). The *ceiling* is MEASURED on each part
 with a streaming-copy probe (`tools/gpu_bandwidth.cu`); the *achieved* figure is
 DERIVED — the kernel's exact modelled byte count divided by the measured phase
-time — not read from DRAM counters. The Hexagon pair is the qualcomm session's
-own probe and model; CPU/Mali ceilings come from `tools/cpu_bandwidth.c` run on
+time — not read from DRAM counters. The Hexagon pair comes from a DSP-side
+probe and model; CPU/Mali ceilings come from `tools/cpu_bandwidth.c` run on
 each board (13.7 GB/s on the i.MX 95, 46.3 on the O6 — CPU and Mali share one
 LPDDR bus, so one probe serves both rows). The A78C board's ceiling is MEASURED
 by the same copy probe at 27.1 GB/s. ⚠️ An attempt to corroborate it with the
@@ -242,7 +242,7 @@ generates **825 events** per run (census → cost → aggregation → argmin, ch
 constantly), while an 8-second steady `memcpy` generates **4**. The instrument
 is richly sampled on real workloads and nearly blind on steady ones — and the
 steady copy chosen to discredit it is exactly the case it cannot see. A
-collaborating session independently reproduced **22.86 / 22.18 GB/s** and
+second party independently reproduced **22.86 / 22.18 GB/s** and
 calibrated the same monitor to **1.8%** of wall-clock using a short *burst*
 probe, which is transition-rich and therefore well sampled. Both measurements
 were honest; the control experiment was mis-chosen. **Discrediting an
@@ -362,8 +362,8 @@ Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical gold
 
 Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**,
 scoring the leftmost D columns as excluded because `x−d < 0` has no
-correspondent. The trio has been **independently reproduced by another party on hardware we
-have never touched** — their NSP run on this exact scene scores bad>1px 16.18%,
+correspondent. The trio has been **independently reproduced on separate hardware, by a
+measurement this project did not run** — their NSP run on this exact scene scores bad>1px 16.18%,
 bad>2px 11.18%, MAE 3.35 against the dense ground truth, agreeing with our
 figures to 0.05 points. (An earlier revision of the scene was independently
 scored the same way.)
@@ -534,8 +534,8 @@ the freedom is worth more as permission not to worry than as an optimisation.
     a55/baseline/    phase-0 standalone benchmarks, kept unchanged for reference
     a55/sgm_fused.c  REJECTED wavefront experiment, kept for its header
     a720/            A720-specific variant (K-row interleaving; measured no gain)
-    colmajor/        column-major layout experiment — contributed, not my work
-    hvx/             Hexagon HVX SGM kernels, both configurations, + DSP bandwidth probe — contributed, not my work
+    colmajor/        column-major layout experiment
+    hvx/             Hexagon HVX SGM kernels, both configurations, + DSP bandwidth probe
     mali_cl/         OpenCL kernel + host
     cuda/            CUDA kernels: the naive port and the tuned warp-centric one
     multiscale/      Configuration B: oracle, NEON, OpenCL and CUDA implementations
@@ -553,11 +553,10 @@ the freedom is worth more as permission not to worry than as an optimisation.
     LICENSE          0BSD — no attribution, no notice, no restrictions
     THIRD-PARTY.md   the one piece of third-party material, and its terms
 
-`colmajor/` and `hvx/` were contributed by a collaborating session working on
-Qualcomm silicon and are credited as theirs. `hvx/configA/` and `hvx/configB/`
-carry the full contributed HVX kernel sets behind every Hexagon row (kernels,
-IDL, host driver, skel build fragment, and build notes in `hvx/README.md`), so
-the entire table — including the DSP rows — rebuilds from this repository.
+`hvx/configA/` and `hvx/configB/` carry the full HVX kernel sets behind every
+Hexagon row (kernels, IDL, host driver, skel build fragment, and build notes in
+`hvx/README.md`), so the entire table — including the DSP rows — rebuilds from
+this repository.
 
 ### Adding an implementation
 

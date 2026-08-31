@@ -14,7 +14,7 @@ from matplotlib.patches import Patch
 # (label, class, ms, MDE/s) — MEASURED, 1080p D=64. None = not yet measured.
 # Clock is shown only where it was actually read off the machine. The Jetson GPUs
 # report [N/A] to nvidia-smi and have no readable devfreq node, and the A78C
-# board was under another session's lease, so those are left blank rather than
+# board was in use elsewhere, so those are left blank rather than
 # guessed -- an empty field beats a plausible number.
 DATA = [
     ("NVIDIA RTX 5090 GPU",     "GPU",   3.46, 38356),
