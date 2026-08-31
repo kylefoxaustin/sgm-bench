@@ -1231,6 +1231,17 @@ would have inflated every cell 4×. The invocation counts give it away —
 `k_avg` appears 4 times and `k_path` 64 (8 paths × 2 scales × 4 frames) — which
 is why per-kernel counts are worth printing before any sum is trusted.
 
+
+⚠️ **The NSP's DRAM cell is DERIVED and cannot currently be measured.** The
+board's `llcc-bwmon` reads 1.21 GB/s during an NSP run against a 0.81 GB/s idle
+floor, and that number does not discriminate between two incompatible stories:
+the VTCM-resident kernel genuinely moving almost nothing, or the monitor being
+blind to the CDSP's path to DRAM. Both fit. The accurate statement is **"the
+DSP's DRAM traffic is not attributable with the counters this kernel exposes"** —
+*not* "the NSP uses less DDR", which the evidence does not support. The `~16 †`
+cell is the streaming byte model, and carries the model's ±12% band like every
+other derived cell.
+
 ## Against published work
 
 SOURCED — ReS2tAC, *Sensors* 21(11):3938, 2021, Tables 6 and 7.

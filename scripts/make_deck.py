@@ -247,7 +247,7 @@ BW2 = [
  ("Orin OFA (ds=2)",  "14.9 ms",  "≈0.7 measured","175", "0.9%", "≈ exactly the irreducible in+out images (67 fps × ~6 MB)"),
  ("8x Cortex-A78C",   "211.9 ms", "withdrawn", "27.1", "--", "🔴 window-dependent: 11.8 / 22.8 / 36.4 GB/s at 5 / mid / 40 frames -- see note"),
  ("8x Cortex-A720",   "238.3 ms", "18.9 †", "46.3",  "41%", "was 14% on A -- no longer comfortably compute-bound"),
- ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","approximate: their fused kernel parks state in VTCM"),
+ ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","DERIVED only -- the DSP's DRAM traffic is NOT attributable with this kernel's counters"),
  ("Mali-G720 (10 CU)","380.0 ms", "11.8 †", "46.3",  "26%", "not bandwidth-bound"),
  ("6x Cortex-A55",    "640.1 ms", "8.8 measured",  "13.7",  "64%", "TWO-THIRDS of the whole chip's bus at six threads"),
  ("Mali-G310 (1 CU)", "2,704 ms", "2.1 measured",  "13.7",  "15%", "GPU + host combined; not bandwidth-bound"),
