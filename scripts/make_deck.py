@@ -428,13 +428,15 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseB = 14265.0
-CEIL = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
+CEIL = {"NVIDIA RTX 5090": "495 † / 1,385", "NVIDIA Thor": "100 † / 249", "NVIDIA Orin AGX": "62 † / 175",
         "NVIDIA OFA on Thor (ds=2)": "≈0 / 249", "NVIDIA OFA on Orin (ds=2)": "0.7 / 175",
-        "Cortex-A78C x8 (6 threads)": "— / 27.1", "Cortex-A78C x1": "— / 27.1",
-        "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
-        "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
+        "Cortex-A78C x8 (6 threads)": "withdrawn / 27.1", "Cortex-A78C x1": "10.2 † / 27.1",
+        "Cortex-A720 x8": "18.9 † / 46.3", "Cortex-A720 x1": "9.6 † / 46.3",
+        "Hexagon v73 NSP": "~16 † / 28", "Mali-G720 (10 CU)": "11.8 † / 46.3",
         "Cortex-A55 x6": "8.8 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
         "Mali-G310 (1 CU)": "2.1 / 13.7", "scalar reference": "— / 13.7"}
+BMEAS = {"Cortex-A55 x6", "Cortex-A55 x1", "Mali-G310 (1 CU)",
+         "NVIDIA OFA on Thor (ds=2)", "NVIDIA OFA on Orin (ds=2)"}
 for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
     bw = CEIL.get(lab, "—")
     if ms is not None and mdev is None:
@@ -453,6 +455,10 @@ for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
         run.font.size = Pt(11); run.font.color.rgb = MUTED if ms is None else INK
         run.font.bold = (c in (0, 4)) and ms is not None
+        if c == 5 and lab in BMEAS:
+            run.font.color.rgb = RGBColor(0x18, 0x7A, 0x33); run.font.bold = True
+        if c == 5 and lab.startswith("Cortex-A78C x8"):
+            run.font.color.rgb = RGBColor(0xD9, 0x30, 0x25)
         if c == 1:
             run.font.color.rgb = ACC[cls]; run.font.bold = True
 
@@ -468,8 +474,10 @@ for i, (big, small) in enumerate(CALLOUTS_B):
 
 textbox(sB, .6, 7.24, 12.2, .26,
         "MDE/s (work) = both scales: (0.384+1.536) Mpx x 64 / runtime. OFA rows: their OWN SGM at matched geometry, throughput only. "
-        "‡ achieved / ceiling GB/s, MEASURED cells only (A55+G310: i.MX95 DDR controller, 64% of the chip's bus at 6xA55; OFA: EMC ~ idle). "
-        "Blank: A720/G720 CMN counters dead, NSP/5090 staged, and the A78C icc_bwmon cell WITHDRAWN (failed its idle control). Details: bandwidth slide.",
+        "‡ DRAM achieved / ceiling GB/s. GREEN = MEASURED (A55 + G310 at the i.MX95 DDR controller -- six A55s take 64% of the whole chip's "
+        "bus; the OFA rows by Jetson EMC sampling, ~idle). † = DERIVED: the 4.50 GB/frame streaming byte model / the measured frame time, "
+        "cache-reuse-free so a slight under-count (it reproduces the measured A55x6 cell at 80%). Every ceiling is MEASURED by copy probe. "
+        "RED = the A78C cell withdrawn as window-dependent -- see the withdrawn-cell slide.",
         8, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
@@ -526,13 +534,14 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseC = 18020.0
-CEILC = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
+CEILC = {"NVIDIA RTX 5090": "508 † / 1,385", "NVIDIA Thor": "107 † / 249", "NVIDIA Orin AGX": "63 † / 175",
          "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
-         "Cortex-A78C x8 (6 threads)": "— / 27.1", "Cortex-A78C x1": "— / 27.1",
-         "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
-         "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
+         "Cortex-A78C x8 (6 threads)": "withdrawn / 27.1", "Cortex-A78C x1": "10.2 † / 27.1",
+         "Cortex-A720 x8": "25.4 † / 46.3", "Cortex-A720 x1": "9.4 † / 46.3",
+         "Hexagon v73 NSP": "16.3 † / 28", "Mali-G720 (10 CU)": "11.9 † / 46.3",
          "Cortex-A55 x6": "9.2 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
-         "Mali-G310 (1 CU)": "— / 13.7", "scalar reference": "— / 13.7"}
+         "Mali-G310 (1 CU)": "1.7 † / 13.7", "scalar reference": "— / 13.7"}
+CMEAS = {"Cortex-A55 x6", "Cortex-A55 x1"}
 for rr_, (lab, cls, ms, mdev) in enumerate(CROWS, start=1):
     fps = 1000.0/ms
     bw = CEILC.get(lab, "—")
@@ -548,6 +557,10 @@ for rr_, (lab, cls, ms, mdev) in enumerate(CROWS, start=1):
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
         run.font.size = Pt(9.5); run.font.color.rgb = INK
         run.font.bold = (c in (0, 4)) and mdev is not None
+        if c == 5 and lab in CMEAS:
+            run.font.color.rgb = RGBColor(0x18, 0x7A, 0x33); run.font.bold = True
+        if c == 5 and lab.startswith("Cortex-A78C x8"):
+            run.font.color.rgb = RGBColor(0xD9, 0x30, 0x25)
         if c == 1:
             run.font.color.rgb = ACC[cls]; run.font.bold = True
 
@@ -562,8 +575,10 @@ textbox(sC, .6, 6.68, 12.2, .5,
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
 textbox(sC, .6, 7.18, 12.2, .3,
         "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 -- not bit-exact. "
-        "‡ achieved / ceiling GB/s, MEASURED cells only: A55 at the DDR controller (67% of the chip's bus at 6 threads). Blank: A720/G720 CMN "
-        "counters dead, NSP/5090 staged, A78C icc_bwmon cell WITHDRAWN (failed its idle control -- see the Config B bandwidth slide).",
+        "‡ DRAM achieved / ceiling GB/s. GREEN = MEASURED at the i.MX95 DDR controller (67% of the chip's bus at six threads). † = DERIVED: "
+        "C's own 6.07 GB/frame byte model (B's 4.50 scaled by searched pixels, 1.35x) / the measured frame time -- same cache-reuse-free "
+        "under-count, reproducing the measured A55x6 cell at 78%, which matches B's 80% and is the cross-check that the scaling is honest. "
+        "RED = the A78C cell withdrawn as window-dependent. OFA rows blank: a different algorithm, so this model would be fiction.",
         8.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
