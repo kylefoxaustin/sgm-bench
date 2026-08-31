@@ -156,9 +156,9 @@ base = 9188.0
 for r, (lab, cls, ms, sil, notes) in enumerate(rows, start=1):
     BW = {"NVIDIA RTX 5090 GPU":"587 / 1,385","NVIDIA Thor GPU":"145 / 249",
           "NVIDIA Orin AGX GPU":"87 / 175","Hexagon v73 NSP":"6.8 / 28",
-          "Cortex-A720 x8":"6.6 / 46.3","Cortex-A78C x8":"3.4 / —",
+          "Cortex-A720 x8":"6.6 / 46.3","Cortex-A78C x8":"3.4 / 27.1",
           "Mali-G720":"16.1 / 46.3","Cortex-A720 x1 @2.5GHz":"1.1 / 46.3",
-          "Cortex-A78C x1":"1.0 / —","Cortex-A55 x6":"1.1 / 13.7",
+          "Cortex-A78C x1":"1.0 / 27.1","Cortex-A55 x6":"1.1 / 13.7",
           "Cortex-A55 x1 @1.8GHz":"0.2 / 13.7","Mali-G310":"1.6 / 13.7"}
     bw = BW.get(lab, "—")
     hwd = HWNAMES.get(lab)
@@ -209,7 +209,7 @@ BWROWS = [
  ("Mali-G720 (10 CU)","--",       "16.1", "46.3",  "35%", "not bandwidth-bound"),
  ("8x Cortex-A720",   "--",       "6.6",  "46.3",  "14%", "compute-bound"),
  ("Hexagon v73 NSP",  "--",       "6.8",  "28",    "24%", "LATENCY-bound (28 GB/s available, 6.8 used)"),
- ("8x Cortex-A78C",   "--",       "3.4",  "--",    "--",  "ceiling unmeasured on that board -- stated, not guessed"),
+ ("8x Cortex-A78C",   "--",       "3.4",  "27.1",  "13%", "compute-bound on A; ceiling MEASURED via copy probe + icc_bwmon"),
  ("6x Cortex-A55",    "--",       "1.1",  "13.7",  "8%",  "compute-bound"),
 ]
 tblW = sBW.shapes.add_table(len(BWROWS)+1, 6, Inches(.6), Inches(2.0), Inches(12.1), Inches(0.4)).table
@@ -249,7 +249,7 @@ BW2 = [
  ("NVIDIA Orin AGX",  "72.8 ms",  "62 †",   "175",   "25%", "EMC net-of-idle, measured; memory-bound"),
  ("Thor OFA (ds=2)",  "3.38 ms",  "≈0 measured", "249", "1.4%", "EMC indistinguishable from idle at 296 fps — the block runs in its internals"),
  ("Orin OFA (ds=2)",  "14.9 ms",  "≈0.7 measured","175", "0.9%", "≈ exactly the irreducible in+out images (67 fps × ~6 MB)"),
- ("8x Cortex-A78C",   "211.9 ms", "21.2 †", "n.m.",  "--",  "the S-plane tax; ceiling unmeasured on that board"),
+ ("8x Cortex-A78C",   "211.9 ms", "22.8 measured", "27.1", "84%", "SATURATED -- and why this board peaks at 6 threads, not 8"),
  ("8x Cortex-A720",   "238.3 ms", "18.9 †", "46.3",  "41%", "was 14% on A -- no longer comfortably compute-bound"),
  ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","approximate: their fused kernel parks state in VTCM"),
  ("Mali-G720 (10 CU)","380.0 ms", "11.8 †", "46.3",  "26%", "not bandwidth-bound"),
@@ -278,8 +278,9 @@ textbox(sB2, .6, 5.72, 12.2, .8,
         "bandwidth-pressured ones. (It is also why the A720 cluster absorbed Configuration C's extra pixels at the "
         "same wall-clock: it was already pressed against a different limit than arithmetic.)", 12.5, True, INK)
 textbox(sB2, .6, 6.68, 12.2, .45,
-        "GREEN 'measured' = imx9_ddr0 DDR controller (i.MX95 rows) or Jetson EMC utilization sampled at 200 ms, net of idle "
-        "(Jetson rows; % is relative to the run's EMC clock). † = DERIVED: 4.50 GB/frame "
+        "GREEN 'measured' = imx9_ddr0 DDR controller (i.MX95), Jetson EMC sampling (net of idle; % of the run's EMC clock), "
+        "or the IQ-9075's icc_bwmon interconnect monitor (time-weighted, net of idle; instance 9091000, others read 23-27). "
+        "† = DERIVED: 4.50 GB/frame "
         "streaming model (cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured "
         "frame time -- cache-reuse-free, so a slight under-count: the model reproduces the A55x6's measured cell at 80%.",
         10, False, MUTED)
@@ -373,7 +374,7 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
 baseB = 14265.0
 CEIL = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
         "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
-        "Cortex-A78C x8 (6 threads)": "— / n.m.", "Cortex-A78C x1": "— / n.m.",
+        "Cortex-A78C x8 (6 threads)": "22.8 / 27.1", "Cortex-A78C x1": "— / 27.1",
         "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
         "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
         "Cortex-A55 x6": "8.8 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
@@ -472,7 +473,7 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
 baseC = 18020.0
 CEILC = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
          "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
-         "Cortex-A78C x8 (6 threads)": "— / n.m.", "Cortex-A78C x1": "— / n.m.",
+         "Cortex-A78C x8 (6 threads)": "23.8 / 27.1", "Cortex-A78C x1": "— / 27.1",
          "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
          "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
          "Cortex-A55 x6": "9.2 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",

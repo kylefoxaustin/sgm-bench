@@ -82,11 +82,11 @@ workload on the same roster.)
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | 87 / 175 | — |
 | 8× Cortex-A720 @2.2–2.5 GHz (Radxa O6) | CPU | 8 | 51.7 | **2,569** | 6.6 / 46.3 | 423 |
 | *NVIDIA OFA on Orin AGX* † | fixed-fn | — | *72.6 (D=128)* | *3,654* | — | — |
-| 8× Cortex-A78C (IQ-9075) | CPU | 6 | 98.0 | 1,354 | 3.4 / — | 395 |
+| 8× Cortex-A78C (IQ-9075) | CPU | 6 | 98.0 | 1,354 | 3.4 / 27.1 | 395 |
 | **Hexagon v73 NSP** @1.46 GHz | DSP | 4 | 148.4 | **894** | 6.8 / 28 | — |
 | Mali-G720, 10 CU | GPU | — | 256.0 | 518 | 16.1 / 46.3 | — |
 | 1× Cortex-A720 @2.5 GHz | CPU | 1 | 313.6 | 423 | 1.1 / 46.3 | 423 |
-| 1× Cortex-A78C | CPU | 1 | 336.1 | 395 | 1.0 / — | 395 |
+| 1× Cortex-A78C | CPU | 1 | 336.1 | 395 | 1.0 / 27.1 | 395 |
 | 6× Cortex-A55 @1.8 GHz (i.MX 95) | CPU | 6 | 341.3 | 389 | 1.1 / 13.7 | 84 |
 | 1× Cortex-A55 @1.8 GHz | CPU | 1 | 1588.7 | 84 | 0.2 / 13.7 | 84 |
 | Mali-G310, 1 CU | GPU | — | 1846.0 | 72 | 1.6 / 13.7 | — |
@@ -101,8 +101,9 @@ DERIVED — the kernel's exact modelled byte count divided by the measured phase
 time — not read from DRAM counters. The Hexagon pair is the qualcomm session's
 own probe and model; CPU/Mali ceilings come from `tools/cpu_bandwidth.c` run on
 each board (13.7 GB/s on the i.MX 95, 46.3 on the O6 — CPU and Mali share one
-LPDDR bus, so one probe serves both rows). The A78C ceiling is unmeasured (that
-board is another session's) and its cell says so rather than guessing.
+LPDDR bus, so one probe serves both rows). The A78C board's ceiling is now
+MEASURED too — 27.1 GB/s by the same copy probe, cross-confirmed within 5% by
+the SoC's own icc_bwmon interconnect monitor reading 27–28 GB/s during it.
 
 The column tells one story twice. The NVIDIA GPUs sit at **42–58% of their
 ceiling** — memory-bound, which is why their optimisation ended at traffic
