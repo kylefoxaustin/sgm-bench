@@ -284,6 +284,61 @@ textbox(sB2, .6, 6.62, 12.2, .45,
         "cache-reuse-free, so a slight under-count: it reproduces the A55x6's measured cell at 80%.",
         8.5, False, MUTED)
 
+# ---------------- withdrawn cell / method slide ----------------
+sW = prs.slides.add_slide(blank)
+textbox(sW, .6, .3, 12.2, .7, "One cell withdrawn, and a retraction that was itself wrong", 23, True)
+textbox(sW, .6, .95, 12.2, .5,
+        "The A78C bandwidth cell on the previous slide is blank. Both the withdrawal and the mistake made while "
+        "explaining it are on the record, because the second one is the more useful of the two.", 12, False, MUTED)
+
+WROWS = [
+ ("What was published",
+  "A78C x6 on Configuration B: 22.8 GB/s of a 27.1 ceiling = 84%, 'bandwidth-SATURATED' — and offered as the "
+  "mechanism behind that board's long-known 'peaks at 6 threads, not 8' behaviour."),
+ ("Why it came down (this reason STANDS)",
+  "The identical workload reads 11.8 / 22.8 / 36.4 GB/s as the timed-frame count goes 5 -> 40. A scalar that moves "
+  "3x with run length is measuring the WINDOW, not the workload."),
+ ("🚨 The reason first published was WRONG",
+  "It claimed the instrument 'fails its own control', citing an idle window and a sustained streaming copy that both "
+  "behaved absurdly. A collaborating session reproduced the cell independently (22.86 / 22.18) and calibrated the same "
+  "monitor to 1.8% of wall-clock — within a minute of that retraction going out."),
+ ("What actually reconciles them",
+  "icc_bwmon fires on THRESHOLD CROSSINGS, so its sampling rate tracks the workload's PHASE VARIANCE. Measured: SGM "
+  "Config B = 825 events per run (census -> cost -> aggregation -> argmin, always changing); 8-second steady memcpy = "
+  "4 events. Richly sampled on real workloads, nearly blind on steady ones."),
+ ("So the control was the mistake",
+  "The steady copy chosen to discredit it is exactly the workload it cannot see: 1.32 GB/s read against a ground-truth "
+  "26.59. The collaborator's BURST probe is transition-rich, which is why theirs agreed to 1.8%. Both sides measured "
+  "honestly; one probe could not work."),
+ ("What is still open",
+  "Those 825 samples span 0.85 -> 37 GB/s across a frame's phases, so the scalar depends on what you integrate over: "
+  "a window padded with image load reads ~22.8, an aggregation-dominated one ~36. The cell returns when both sides "
+  "integrate the TIMED REGION ONLY, at the same n, and land together."),
+]
+tW = sW.shapes.add_table(len(WROWS)+1, 2, Inches(.6), Inches(1.6), Inches(12.1), Inches(0.4)).table
+for i, w in enumerate((3.5, 8.6)): tW.columns[i].width = Inches(w)
+for c, t in enumerate(("", "")):
+    cell = tW.cell(0, c); cell.text = ("stage" if c == 0 else "what happened")
+    pr = cell.text_frame.paragraphs[0]; pr.runs[0].font.size = Pt(11)
+    pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
+    cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
+for rr_, (a, b) in enumerate(WROWS, start=1):
+    for c, t in enumerate((a, b)):
+        cell = tW.cell(rr_, c); cell.text = t
+        pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
+        run.font.size = Pt(10.5); run.font.bold = (c == 0)
+        run.font.color.rgb = RGBColor(0xD9,0x30,0x25) if (c == 0 and rr_ == 3) else INK
+
+textbox(sW, .6, 6.25, 12.2, .8,
+        "⭐ THE RULE THIS EARNED, and it cost more than the first one: A CONTROL EXPERIMENT IS ITSELF AN INSTRUMENT, AND "
+        "CAN BE MIS-CHOSEN. Discrediting a counter with a workload it structurally cannot observe produces a confident, "
+        "well-evidenced, WRONG conclusion — shipped here in a commit message, a README, and a message to the person whose "
+        "recipe was being declared broken. Retracting carelessly is a way of being wrong that FEELS like rigour.", 12.5, True, INK)
+textbox(sW, .6, 7.16, 12.2, .3,
+        "Genuinely wrong and permanently removed: 'ceiling cross-confirmed within 5% by icc_bwmon' — that read cpu-bwmon on the CPU->LLC path, not "
+        "pmu@9091000 (llcc-bwmon, LLCC->DDR). Corroboration requires the second instrument measure the same QUANTITY, not merely produce a similar number.",
+        9, False, MUTED)
+
 # ---------------- one slide per unit ----------------
 for lab, cls, ms, sil, notes in UNITS:
     sl = prs.slides.add_slide(blank)
