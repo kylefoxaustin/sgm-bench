@@ -1196,6 +1196,41 @@ stays removed. Device tree: `pmu@9091000` is `qcom,sa8775p-llcc-bwmon`
 different point in the hierarchy — a category error independent of everything
 above.
 
+## The streaming byte model, calibrated against the memory controller
+
+Most DRAM cells in this report are DERIVED: a per-phase streaming byte model
+divided by a measured time. On 2026-08-31 the RTX 5090's cells were MEASURED
+directly at the memory controller (`ncu`, `dram__bytes_op_read.sum` +
+`dram__bytes_op_write.sum`, summed over every kernel of a frame), which turns
+the model from an assumption into something with a known error bar.
+
+| configuration | modelled GB/frame | MEASURED GB/frame | model / measured |
+|---|---|---|---|
+| A — aggregation phase, 1080p D=64 | 1.46 | **1.299** | 112% |
+| Run 1 — 1920×800, 8 paths, 2 scales | 4.50 | **4.588** | 98% |
+| Run 2 — 1920×1080, 8 paths, 2 scales | 6.07 | **6.452** | 94% |
+
+**The model is good to about ±12%, and its sign is not constant.** It
+*over*-predicts Configuration A because it assumes no cache reuse and the
+four-path aggregation kernel gets some; it *under*-predicts the two multiscale
+runs, where the eight-path uint16 S-plane spills whatever reuse existed. Read
+every remaining † cell in this repository as carrying that band.
+
+Achieved bandwidth follows: **520 GB/s** for Configuration A on the aggregation
+phase (against a DERIVED 587 previously published — 13% high, the same 12% model
+error plus rounding), **505 GB/s** on Run 1 and **540 GB/s** on Run 2, whole
+frame. All three are 36–39% of the part's measured 1,385 GB/s ceiling.
+
+⚠️ **Two traps worth recording, because both silently produce a wrong number.**
+**(1)** `dram__bytes_read.sum` does not exist on GB202 — it returns `n/a`, and
+the working names take an `_op_` infix (`dram__bytes_op_read.sum`). A first
+attempt read the absence as "consumer parts don't expose DRAM counters", which
+was wrong. **(2)** The multiscale binaries run `reps+3` iterations, so profiling
+with `-n 1` captures **four** frames, not one; dividing by the wrong frame count
+would have inflated every cell 4×. The invocation counts give it away —
+`k_avg` appears 4 times and `k_path` 64 (8 paths × 2 scales × 4 frames) — which
+is why per-kernel counts are worth printing before any sum is trusted.
+
 ## Against published work
 
 SOURCED — ReS2tAC, *Sensors* 21(11):3938, 2021, Tables 6 and 7.

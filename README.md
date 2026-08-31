@@ -76,7 +76,7 @@ workload on the same roster.)
 
 | target | class | threads | ms | **MDE/s** | DRAM GB/s ‡ | per-core |
 |---|---|---|---|---|---|---|
-| **NVIDIA RTX 5090 GPU** (Blackwell, 170 SM, CUDA) | GPU | — | 3.46 | **38,356** | 587 / 1,385 | — |
+| **NVIDIA RTX 5090 GPU** (Blackwell, 170 SM, CUDA) | GPU | — | 3.46 | **38,356** | **520** / 1,385 | — |
 | *NVIDIA OFA on Thor* † | fixed-fn | — | *9.4 (D=128)* | *28,402* | — | — |
 | **NVIDIA Thor GPU** (Blackwell, 20 SM, CUDA) | GPU | — | 13.2 | **10,062** | 145 / 249 | — |
 | **NVIDIA Orin AGX GPU** (Ampere, 16 SM, CUDA) | GPU | — | 23.3 | **5,700** | 87 / 175 | — |
@@ -137,7 +137,7 @@ streaming-copy probe on each part:
 
 | GPU | aggregate | achieved | ceiling | utilisation | MDE/s |
 |---|---|---|---|---|---|
-| RTX 5090 | 2.49 ms | 587 GB/s | 1,385 GB/s | 42% | 38,356 |
+| RTX 5090 | 2.49 ms | **520 GB/s** | 1,385 GB/s | 38% | 38,356 |
 | Thor | 10.04 ms | 145 GB/s | 249 GB/s | 58% | 10,062 |
 | Orin AGX | 16.83 ms | 87 GB/s | 175 GB/s | 49% | 5,701 |
 
@@ -194,7 +194,7 @@ oracle defines a golden, and every implementation must reproduce it byte-exactly
 | target | ms | fps | MDE/s (work) † | DRAM GB/s § |
 |---|---|---|---|---|
 | *NVIDIA OFA on Thor* ‡ | *3.38* | *296* | *—* | **≈0** / 249 |
-| **NVIDIA RTX 5090** (CUDA) | 9.08 | **110.2** | 13,538 | 495 † / 1,385 |
+| **NVIDIA RTX 5090** (CUDA) | 9.08 | **110.2** | 13,538 | **505** / 1,385 |
 | *NVIDIA OFA on Orin AGX* ‡ | *14.90* | *67.1* | *—* | **0.7** / 175 |
 | **NVIDIA Thor** (CUDA) | 45.1 | 22.2 | 2,723 | 100 † / 249 |
 | **NVIDIA Orin AGX** (CUDA) | 72.8 | 13.7 | 1,688 | 62 † / 175 |
@@ -283,7 +283,7 @@ would have to land to match their frame time.*
 | target | ms | fps | MDE/s (work) † | DRAM GB/s § |
 |---|---|---|---|---|
 | *NVIDIA OFA on Thor* ‡ | *4.08* | *245* | *—* | — / 249 |
-| **NVIDIA RTX 5090** (CUDA) | 11.96 | **83.6** | 13,870 | 508 † / 1,385 |
+| **NVIDIA RTX 5090** (CUDA) | 11.96 | **83.6** | 13,870 | **540** / 1,385 |
 | *NVIDIA OFA on Orin AGX* ‡ | *19.51* | *51.2* | *—* | — / 175 |
 | **NVIDIA Thor** (CUDA) | 56.7 | 17.7 | 2,928 | 107 † / 249 |
 | **NVIDIA Orin AGX** (CUDA) | 96.9 | 10.3 | 1,711 | 63 † / 175 |
