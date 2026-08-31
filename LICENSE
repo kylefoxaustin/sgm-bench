@@ -1,0 +1,38 @@
+BSD Zero Clause License (0BSD)
+SPDX-License-Identifier: 0BSD
+
+Copyright (c) 2026 Kyle Fox
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+
+
+-------------------------------------------------------------------------------
+WHAT THIS COVERS
+-------------------------------------------------------------------------------
+
+Deliberately the most permissive licence there is: no attribution required, no
+notice to retain, no restriction on commercial use. Take it, ship it, sell it,
+relicense it — no strings.
+
+It covers everything in this repository: every implementation (C, NEON, CUDA,
+OpenCL, HVX), the harness, the scripts, the synthetic scenes and their goldens,
+the reports, and the generated figures and decks — with the single exception
+named below.
+
+EXCEPTION — one figure. `docs/panels/motorcycle_real.png` is a rendered panel
+whose leftmost image is a frame from the Middlebury 2014 Stereo Dataset
+("Motorcycle"), reproduced to illustrate the accuracy measurement. That frame
+belongs to its authors and is not the author's to relicense; see THIRD-PARTY.md.
+
+The dataset itself is NOT redistributed here. `data/real/` is deliberately
+untracked; `scripts/fetch_middlebury.sh` retrieves the scene from the source so
+that every user accepts its terms directly from the people who set them.

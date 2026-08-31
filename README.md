@@ -550,6 +550,8 @@ the freedom is worth more as permission not to worry than as an optimisation.
                      (sgm-results.pptx = full A/B/C deck; sgm-two-resolutions.pptx
                       = B+C as one workload at two input sizes, fps-first)
     REPORT.md        the measurement record, with provenance on every number
+    LICENSE          0BSD — no attribution, no notice, no restrictions
+    THIRD-PARTY.md   the one piece of third-party material, and its terms
 
 `colmajor/` and `hvx/` were contributed by a collaborating session working on
 Qualcomm silicon and are credited as theirs. `hvx/configA/` and `hvx/configB/`
@@ -675,6 +677,21 @@ Things that cost real time here, recorded so they cost you less:
   different `paths=` is a textbook false negative and has already happened once.
 
 ---
+
+## Licence
+
+**[0BSD](LICENSE) — the most permissive licence there is.** No attribution
+required, no notice to retain, no restriction on commercial use. Take it, ship
+it, sell it, relicense it. Every implementation, the harness, the scripts, the
+synthetic scenes and their goldens, the reports and the generated figures are
+covered.
+
+One exception, stated rather than buried: the leftmost image in the panel at
+the top of this README is a frame from the **Middlebury 2014 Stereo Dataset**,
+which belongs to its authors. The dataset itself is **not redistributed here** —
+`data/real/` is untracked and `scripts/fetch_middlebury.sh` fetches the scene
+from the source, so you accept its terms directly from the people who set them.
+Details in [THIRD-PARTY.md](THIRD-PARTY.md).
 
 ## Ground rules for numbers
 
