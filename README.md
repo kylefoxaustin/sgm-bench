@@ -545,6 +545,8 @@ the freedom is worth more as permission not to worry than as an optimisation.
     data/golden/     Configuration A goldens + sha256 + roofline calibrations
     data/shared/     the cross-platform D=64/128/256 scene and its goldens
     data/multiscale/ Configuration B scene and golden
+    results/         run records — see results/README.md for what each
+                     file covers (A and B/C records look nothing alike)
     data/real/       Middlebury-derived real-imagery scene and ground truth
     docs/            results charts, panels, and the generated decks
                      (sgm-results.pptx = full A/B/C deck; sgm-two-resolutions.pptx
