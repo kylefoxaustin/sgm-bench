@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""make_chart_b.py — the Configuration B results figure for the README.
+"""make_chart_c.py — the Configuration C results figure for the README.
 
-Every bar is MEASURED at Configuration B: 1920x800 in, 960x400 out, two full
-64-disparity scales with averaged data costs, census 9x7 on SobelX, eight paths
-with direction-weighted P1, P2=200 saturating. Bit-exact to golden
-bcb9cb0bd6f49799 on every row. MDE/s uses the work-performed convention
-((0.384 + 1.536) Mpx x 64 / time) so both scales count.
+Run 2 is the 1920x1080 input of the two-run pair; Run 1 is the identical
+algorithm at 1920x800. ONE variable changes between them: the input size. Bit-exact to golden
+0f0961d623009df5 on every row. MDE/s uses the work-performed convention
+((2.074 + 0.518) Mpx x 64 / time) so both scales count.
 """
 import matplotlib
 matplotlib.use("Agg")
@@ -15,19 +14,19 @@ from matplotlib.patches import Patch
 # (label, class, ms, MDE/s work) — MEASURED. Same tiers as Configuration A:
 # tuned CUDA / OpenCL / NEON+OpenMP, scalar oracle as the floor.
 DATA = [
-    ("NVIDIA RTX 5090 GPU",        "GPU",     9.08, 13538),
-    ("NVIDIA Thor GPU",            "GPU",    45.1,   2723),
-    ("NVIDIA Orin AGX GPU",        "GPU",    72.8,   1688),
-    ("Cortex-A78C x8 (6 threads)", "CPU",   211.9,    580),
-    ("Cortex-A720 x8",             "CPU",   238.3,    516),
-    ("Hexagon v73 NSP @1.46GHz",   "DSP",   276.3,    445),
-    ("Mali-G720 (10 CU)",          "GPU",   380.0,    323),
-    ("Cortex-A78C x1",             "CPU",   442.6,    278),
-    ("Cortex-A720 x1",             "CPU",   470.9,    261),
-    ("Cortex-A55 x6 @1.8GHz",      "CPU",   640.1,    192),
-    ("Cortex-A55 x1 @1.8GHz",      "CPU",  2201.0,     56),
-    ("Mali-G310 (1 CU)",           "GPU",  2704.0,     45),
-    ("scalar reference (1 core)",  "REF", 14265.0,    8.6),
+    ("NVIDIA RTX 5090 GPU",        "GPU",    11.96, 13870),
+    ("NVIDIA Thor GPU",            "GPU",    56.7,   2928),
+    ("NVIDIA Orin AGX GPU",        "GPU",    96.9,   1711),
+    ("Cortex-A720 x8",             "CPU",   239.6,    692),
+    ("Cortex-A78C x8 (6 threads)", "CPU",   291.8,    569),
+    ("Hexagon v73 NSP @1.46GHz",   "DSP",   372.4,    446),
+    ("Mali-G720 (10 CU)",          "GPU",   509.4,    326),
+    ("Cortex-A78C x1",             "CPU",   595.3,    279),
+    ("Cortex-A720 x1",             "CPU",   643.1,    258),
+    ("Cortex-A55 x6 @1.8GHz",      "CPU",   844.8,    196),
+    ("Cortex-A55 x1 @1.8GHz",      "CPU",  2954.0,     56),
+    ("Mali-G310 (1 CU)",           "GPU",  3657.0,     45),
+    ("scalar reference (1 core)",  "REF", 18020.0,    9.2),
 ]
 COL = {"GPU": "#4C8BF5", "CPU": "#E8710A", "DSP": "#12B5A5", "REF": "#9AA0A6",
        "HW": "#7B4FD1"}
@@ -37,9 +36,9 @@ COL = {"GPU": "#4C8BF5", "CPU": "#E8710A", "DSP": "#12B5A5", "REF": "#9AA0A6",
 # They are placed by WALL-CLOCK EQUIVALENCE instead: the MDE/s a bit-exact
 # implementation would have to reach to match that engine's frame time. Same
 # quantity the tables print as "x faster (time only)". Hatched, never solid.
-WORK_DE = (0.384 + 1.536) * 1e6 * 64          # this configuration's work per frame
-OFA = [("NVIDIA Thor OFA*",     "HW",  3.38),
-       ("NVIDIA Orin AGX OFA*", "HW", 14.90)]
+WORK_DE = (2.074 + 0.518) * 1e6 * 64          # this configuration's work per frame
+OFA = [("NVIDIA Thor OFA*",     "HW",  4.08),
+       ("NVIDIA Orin AGX OFA*", "HW", 19.51)]
 DATA = DATA + [(l, c, ms, WORK_DE / (ms / 1000) / 1e6) for l, c, ms in OFA]
 
 rows = sorted(DATA, key=lambda r: -r[3])
@@ -63,9 +62,9 @@ ax.invert_yaxis()
 ax.set_xscale("log")
 ax.set_xlim(2, 900000)
 ax.set_xlabel("MDE/s, work-performed convention  (log scale)", fontsize=10)
-ax.set_title("RUN 1 — 1920×800 stereo input  ->  960×400 disparity map\n"
-             "One workload at two input sizes; Run 2 is the same algorithm on 1920×1080. The ONLY variable is the input size.\n"
-             "D=64, 8 paths, 9×7 census on SobelX, two scales fused · solid bars bit-exact to golden bcb9cb0bd6f49799",
+ax.set_title("RUN 2 — 1920×1080 stereo input  ->  960×540 disparity map\n"
+             "One workload at two input sizes; Run 1 is the same algorithm on 1920×800. The ONLY variable is the input size.\n"
+             "D=64, 8 paths, 9×7 census on SobelX, two scales fused · solid bars bit-exact to golden 0f0961d623009df5",
              fontsize=12, pad=14)
 handles = [Patch(color=COL[c], label=l) for c, l in
            [("GPU","GPU"),("CPU","CPU"),("DSP","DSP"),("REF","scalar reference")]]
@@ -82,5 +81,5 @@ fig.text(0.5, 0.012,
          ha="center", va="bottom", fontsize=8.5, color="#7B4FD1", fontweight="bold")
 fig.tight_layout()
 fig.subplots_adjust(bottom=0.20)
-fig.savefig("docs/run1_mde.png", dpi=150)
-print("wrote docs/run1_mde.png")
+fig.savefig("docs/run2_mde.png", dpi=150)
+print("wrote docs/run2_mde.png")

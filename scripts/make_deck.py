@@ -488,7 +488,7 @@ textbox(sl, .6, 1.0, 12.2, .4,
         "not coarse-to-fine), census 9x7 on SobelX, 8 paths with direction-weighted P1 (40/20/10), P2=200 saturating.",
         12, False, MUTED)
 try:
-    sl.shapes.add_picture("docs/results_b.png", Inches(1.35), Inches(1.55), height=Inches(4.95))
+    sl.shapes.add_picture("docs/run1_mde.png", Inches(1.35), Inches(1.55), height=Inches(4.95))
 except Exception:
     pass
 textbox(sl, .6, 6.5, 12.2, .7,
@@ -580,6 +580,23 @@ textbox(sC, .6, 7.18, 12.2, .3,
         "under-count, reproducing the measured A55x6 cell at 78%, which matches B's 80% and is the cross-check that the scaling is honest. "
         "RED = the A78C cell withdrawn as window-dependent. OFA rows blank: a different algorithm, so this model would be fiction.",
         8.5, False, MUTED)
+
+# ---------------- Configuration C chart (Run 2) ----------------
+sl = prs.slides.add_slide(blank)
+textbox(sl, .6, .35, 12, .7, "Configuration C, charted — the roster at 1920x1080", 27, True)
+textbox(sl, .6, 1.0, 12.2, .4,
+        "The pair as one workload at two input sizes -- Run 1 = 1920x800 (previous chart), Run 2 = 1920x1080 (this one). "
+        "Identical algorithm, identical parameters, identical roster; the ONLY variable between the two charts is the input size.",
+        12, False, MUTED)
+try:
+    sl.shapes.add_picture("docs/run2_mde.png", Inches(1.35), Inches(1.55), height=Inches(4.95))
+except Exception:
+    pass
+textbox(sl, .6, 6.5, 12.2, .7,
+        "Row for row the two charts differ by the 1.35x the pixel count predicts -- with one exception, the A720 cluster at 1.01x, "
+        "which is the finding on the table slide. The hatched OFA bars carry no MDE/s: they are the fixed-function engines running "
+        "their OWN algorithm at matched geometry, placed where a bit-exact implementation would have to land to match their frame time.",
+        11.5, False, INK)
 
 # ---------------- Configuration B: one slide per unit ----------------
 # Same treatment as the primary configuration: the arithmetic that produced the
