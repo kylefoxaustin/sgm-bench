@@ -26,23 +26,19 @@ UNITS = [
    "Same kernel, same changes: 3.10x over the naive port (72.27 -> 23.28 ms).",
    "Bit-exact on the first run, before any tuning — the payoff for porting a",
    "verified OpenCL kernel one-for-one instead of writing a new one."]),
- ("NVIDIA RTX 5090 GPU","GPU",   3.46, "Blackwell, 170 SM, discrete, 32 GB, driver 580.173  |  D=128: 4.09 ms  ·  D=256: 7.08 ms", [
-   "The fastest target measured: 37,383 MDE/s at D=64, 282 fps at 1080p.",
-   "64,880 MDE/s at D=128 and 74,957 at D=256 -- and unlike Thor it shows NO",
-   "reversal at D=256, which is what the traffic mechanism predicts on a part",
-   "with 5.6x the memory bandwidth.",
-   "Bandwidth: 587 GB/s achieved of a measured 1,385 GB/s ceiling = 42%, the",
-   "LOWEST utilisation of the three GPUs despite being the fastest -- so at this",
-   "speed it is no longer purely bandwidth-bound.",
-   "⚠️ Built as PTX and JIT-compiled by the driver: the local toolkit is CUDA",
-   "12.6, which cannot target sm_120. Golden verified, but not a native build.",
-   "⭐ ITS STEREO HARDWARE IS MEASURED, AND STEREO MODE IS ALREADY GONE.",
-   "NV_OF_MODE_STEREODISPARITY returns UNSUPPORTED_FEATURE at every grid size;",
-   "NVIDIA's documented deprecation has already landed on Blackwell.",
-   "The fallback -- X component of general optical flow -- runs 8.50 ms with",
-   "5.3% bad pixels, against our CUDA SGM's 4.13 ms and 2.8% on the same scene.",
-   "Software faster AND more accurate, while doing less work (1D vs 2D).",
-   "🚨 13.4% of pixels return a non-zero VERTICAL component, largest 75 px --",
+ ("NVIDIA RTX 5090 GPU","GPU",   3.46, "Blackwell, 170 SM, discrete, 32 GB, driver 580.173  |  D=128: 4.36 ms  ·  D=256: 6.96 ms", [
+   "The fastest target measured: 38,356 MDE/s at D=64, 289 fps at 1080p.",
+   "60,932 MDE/s at D=128 and 76,248 at D=256 -- unlike Thor, NO reversal at D=256,",
+   "which is what the traffic mechanism predicts on a part with 5.6x the bandwidth.",
+   "587 GB/s achieved of a measured 1,385 GB/s ceiling = 42%: the LOWEST utilisation",
+   "of the three GPUs despite being fastest -- no longer purely bandwidth-bound.",
+   "⚠️ Built as PTX, JIT-compiled by the driver (local CUDA 12.6 cannot target",
+   "sm_120). Golden verified, but not a native build.",
+   "⭐ ITS STEREO HARDWARE IS MEASURED, AND STEREO MODE IS ALREADY GONE:",
+   "NV_OF_MODE_STEREODISPARITY returns UNSUPPORTED_FEATURE at every grid size.",
+   "The fallback (X of general 2D flow): 8.50 ms, 5.3% bad px, vs our CUDA SGM's",
+   "4.13 ms and 2.8% -- software faster AND more accurate, doing less work (1D).",
+   "🚨 13.4% of fallback pixels return non-zero VERTICAL flow (largest 75 px) --",
    "errors the removed stereo mode was structurally incapable of producing."]),
  ("Cortex-A720 x8",    "CPU",  51.70, "Radxa Orion O6, 2.2-2.5 GHz, NEON  |  single core: 313.60 ms = 423 MDE/s @2.5 GHz", [
    "The CPU headline: 10.4x the fastest published Arm-CPU SGM at matched D",
@@ -70,17 +66,16 @@ UNITS = [
  ("NVIDIA Thor OFA",   "HW",   9.345, "Fixed-function SGM engine (Optical Flow Accelerator), VPI 4.1.4  |  1080p D=128, downscaleFactor=1", [
    "DEDICATED STEREO HARDWARE, and it beats our tuned CUDA on the same chip",
    "by 2.34x (9.35 ms vs 21.86 ms at 1920x1080 D=128).",
-   "NOT bit-exact to our golden: VPI's SGM is a different implementation with",
-   "its own census, penalties and confidence output. Throughput comparison at",
-   "matched resolution and D -- NOT the same test, and NOT a quality claim.",
-   "🔴 ACCURACY WITHDRAWN. Scored against ground truth our SGM gets 2.6% bad>1px",
-   "(MAE 0.45); OFA aligns under no simple descaling, so its accuracy is",
+   "NOT bit-exact to our golden: VPI's SGM is its own implementation (census,",
+   "penalties, confidence). A throughput comparison at matched resolution and D",
+   "-- NOT the same test, and NOT a quality claim.",
+   "🔴 ACCURACY WITHDRAWN: our SGM scores 2.6% bad>1px (MAE 0.45) on ground",
+   "truth; OFA's output aligns under no simple descaling, so its accuracy is",
    "UNMEASURED and this 2.34x is throughput only.",
-   "VPI defaults to includeDiagonals=1, so OFA ran 8 paths against our 4. Measured,",
-   "not assumed: OFA costs 9.42 ms at 8 paths and 9.85 at 4 -- path-count",
-   "independent. The timing stands and OFA delivers an 8-path result in our time.",
-   "⚠️ It defaults to downscaleFactor=2, which emits a 960x540 map from 1080p",
-   "input in 4.14 ms. Quoting that as a 1080p figure overstates it by 2.3x."]),
+   "VPI defaults to includeDiagonals=1: OFA ran 8 paths against our 4. Measured:",
+   "9.42 ms at 8 paths, 9.85 at 4 -- path-count independent, the timing stands.",
+   "⚠️ downscaleFactor defaults to 2 (960x540 out, 4.14 ms): quoting THAT as a",
+   "1080p figure would overstate it by 2.3x. All numbers here are full-res out."]),
  ("NVIDIA Orin AGX OFA","HW",  72.637, "Fixed-function SGM engine, VPI 3.2.4  |  1080p D=128, downscaleFactor=1", [
    "The same fixed-function engine one generation earlier, and here it LOSES:",
    "our CUDA kernel does the same work in 33.16 ms against the hardware's 72.64.",
@@ -126,7 +121,7 @@ def textbox(sl, x, y, w, h, text, size, bold=False, color=INK, align=PP_ALIGN.LE
 
 # ---------------- slide 1: summary ----------------
 s1 = prs.slides.add_slide(blank)
-textbox(s1, .6, .32, 12.2, .9, "Semi-Global Matching across ten processors", 28, True)
+textbox(s1, .6, .32, 12.2, .9, "Semi-Global Matching across eleven processing units", 28, True)
 textbox(s1, .6, 1.12, 12.2, .5,
         "1920x1080  ·  D=64  ·  4 paths  ·  9x7 census  ·  every row bit-exact to golden 0bc0102058d1505f",
         14, False, MUTED)
@@ -233,8 +228,8 @@ textbox(sBW, .6, 5.4, 12.2, .9,
 textbox(sBW, .6, 6.5, 12.2, .7,
         "Cross-GPU sanity: MDE/s per GB/s of ceiling is 27 / 40 / 33 across a 7.9x bandwidth spread -- throughput largely "
         "IS bandwidth for the tuned GPU kernels, and the residual (the 5090's 42%) says the fastest part is no longer "
-        "purely bandwidth-bound. Achieved-byte instrumentation exists for Configuration A; the B/C runs reuse the same "
-        "silicon and ceilings but their per-phase byte models are not separately derived.", 11, False, MUTED)
+        "purely bandwidth-bound. Configuration B gets its own version of this slide two slides ahead -- with six of its "
+        "achieved cells directly MEASURED at three independent DRAM instruments.", 11, False, MUTED)
 
 # ---------------- bandwidth slide, Configuration B ----------------
 sB2 = prs.slides.add_slide(blank)
@@ -242,7 +237,7 @@ textbox(sB2, .6, .32, 12.2, .8, "Configuration B moves the memory walls", 30, Tr
 textbox(sB2, .6, 1.1, 12.2, .5,
         "Same slide for the block-flavoured workload (1920x800, two scales, 8 paths). The 8-path uint16 S-plane "
         "streams ~3.1 GB per frame on its own; the pipeline's streaming byte model totals 4.50 GB/frame. Three cells "
-        "are MEASURED at the i.MX95 DDR controller; the rest are DERIVED as 4.50 GB / the measured frame time.", 11.5, False, MUTED)
+        "are MEASURED at the i.MX95 DDR controller and three more at other instruments (green); the † cells are DERIVED as 4.50 GB / the measured frame time.", 11.5, False, MUTED)
 BW2 = [
  ("NVIDIA RTX 5090",  "9.08 ms",  "495 †",  "1,385", "36%", "memory-bound; below A's 42% (kernel lacks path-pairing)"),
  ("NVIDIA Thor",      "45.1 ms",  "100 †",  "249",   "24%", "EMC net-of-idle, measured; ≈ the model's 40% freq-normalized"),
@@ -298,10 +293,11 @@ for lab, cls, ms, sil, notes in UNITS:
                 "No measurement exists for this part, so no number is derived.\n"
                 "Nothing is estimated in its place.", 15, False, MUTED)
     else:
+        du = 128 if "OFA" in lab else D  # the OFA engines only accept D>=128
         calc = (f"MDE/s  =  W x H x D / runtime\n"
-                f"        =  {W:,} x {H:,} x {D} / {ms:,.2f} ms\n"
-                f"        =  {W*H*D:,} disparity estimations / {ms/1000:.5f} s\n"
-                f"        =  {mde(ms):,.0f} million disparity estimations per second\n\n"
+                f"        =  {W:,} x {H:,} x {du} / {ms:,.2f} ms\n"
+                f"        =  {W*H*du:,} disparity estimations / {ms/1000:.5f} s\n"
+                f"        =  {W*H*du/ms/1000:,.0f} million disparity estimations per second\n\n"
                 f"frame rate  =  1000 / {ms:,.2f}  =  {1000/ms:,.1f} fps\n"
                 f"pixel rate  =  {W*H/1e6:.4f} Mpx x {1000/ms:,.1f}  =  {W*H/1e6*1000/ms:,.2f} Mpix/s")
         tf = textbox(sl, .6, 2.15, 11.5, 2.2, calc, 14)
@@ -309,13 +305,14 @@ for lab, cls, ms, sil, notes in UNITS:
             for r in p.runs: r.font.name = "Consolas"
 
     textbox(sl, .6, 4.5, 11.5, .4, "What the measurement means", 16, True)
-    tf = textbox(sl, .6, 4.9, 11.9, 2.2, notes[0], 13)
+    nsz = 13 if len(notes) <= 10 else 11
+    tf = textbox(sl, .6, 4.9, 11.9, 2.2, notes[0], nsz)
     for extra in notes[1:]:
         p = tf.add_paragraph(); r = p.add_run(); r.text = extra
-        r.font.size = Pt(13); r.font.color.rgb = INK; r.font.name = "Calibri"
+        r.font.size = Pt(nsz); r.font.color.rgb = INK; r.font.name = "Calibri"
 
     if ms is not None:
-        textbox(sl, .6, 7.0, 11.5, .4,
+        textbox(sl, .6, 7.0 if len(notes) <= 10 else 7.22, 11.5, .4,
                 f"MEASURED — median of the timed frames, golden hash verified in the same run.",
                 11, False, MUTED)
 
@@ -373,12 +370,12 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseB = 14265.0
 CEIL = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
-        "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
+        "NVIDIA OFA on Thor (ds=2)": "≈0 / 249", "NVIDIA OFA on Orin (ds=2)": "0.7 / 175",
         "Cortex-A78C x8 (6 threads)": "22.8 / 27.1", "Cortex-A78C x1": "— / 27.1",
         "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
         "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
         "Cortex-A55 x6": "8.8 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
-        "Mali-G310 (1 CU)": "— / 13.7", "scalar reference": "— / 13.7"}
+        "Mali-G310 (1 CU)": "2.1 / 13.7", "scalar reference": "— / 13.7"}
 for rr_, (lab, cls, ms, mdev) in enumerate(BROWS, start=1):
     bw = CEIL.get(lab, "—")
     if ms is not None and mdev is None:
@@ -410,12 +407,11 @@ for i, (big, small) in enumerate(CALLOUTS_B):
     pp = tf.add_paragraph(); rr = pp.add_run(); rr.text = small.split("\n")[1]
     rr.font.size = Pt(12); rr.font.color.rgb = MUTED; rr.font.name = "Calibri"
 
-textbox(sB, .6, 7.28, 12.2, .3,
-        "MDE/s (work) = both scales count: (0.384 + 1.536) Mpx x 64 / runtime. OFA rows: their OWN SGM at matched "
-        "geometry (ds=2, D=128), throughput only. ‡ DRAM = achieved / ceiling GB/s. A55 cells MEASURED at the i.MX95 "
-        "DDR controller (idle-corrected, whole-run read+write) -- the 8-path multiscale pipeline drives the cluster to "
-        "64% of the chip's whole bus. Other achieved cells not yet instrumented (n.m. = ceiling unmeasured, leased board).",
-        10, False, MUTED)
+textbox(sB, .6, 7.24, 12.2, .26,
+        "MDE/s (work) = both scales: (0.384+1.536) Mpx x 64 / runtime. OFA rows: their OWN SGM at matched geometry, throughput only. "
+        "‡ achieved / ceiling GB/s, MEASURED cells only (A55+G310: i.MX95 DDR controller, 64% of the chip's bus at 6xA55; A78C: icc_bwmon, "
+        "84% = SATURATED, hence the 6-thread peak; OFA: EMC ~ idle). Blank: A720/G720 CMN counters dead, NSP/5090 staged. Details: bandwidth slide.",
+        8, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
 sl = prs.slides.add_slide(blank)
@@ -491,7 +487,7 @@ for rr_, (lab, cls, ms, mdev) in enumerate(CROWS, start=1):
     for c, t in enumerate(vals):
         cell = tblC.cell(rr_, c); cell.text = str(t)
         pp = cell.text_frame.paragraphs[0]; run = pp.runs[0]
-        run.font.size = Pt(10.5); run.font.color.rgb = INK
+        run.font.size = Pt(9.5); run.font.color.rgb = INK
         run.font.bold = (c in (0, 4)) and mdev is not None
         if c == 1:
             run.font.color.rgb = ACC[cls]; run.font.bold = True
@@ -505,10 +501,11 @@ textbox(sC, .6, 6.68, 12.2, .5,
         "The exception is the finding: the A720 CLUSTER runs C at B's wall-clock (1.01x) while its single core "
         "pays the full pixel tax (1.37x) - B's 8-thread run was never work-limited (thread scaling 1.98x vs C's "
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
-textbox(sC, .6, 7.2, 12.2, .3,
-        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 — not bit-exact. "
-        "‡ DRAM = achieved / ceiling GB/s. A55 cells MEASURED at the DDR controller (67% of the chip's bus at 6 threads); other achieved cells not yet instrumented.",
-        9.5, False, MUTED)
+textbox(sC, .6, 7.18, 12.2, .3,
+        "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 -- not bit-exact. "
+        "‡ achieved / ceiling GB/s, MEASURED cells only: A55 at the DDR controller (67% of the chip's bus at 6 threads); A78C via icc_bwmon, "
+        "23.8 of 27.1 -- still saturated at the bigger scene. Blank: A720/G720 CMN counters dead, NSP/5090 staged.",
+        8.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
 # Same treatment as the primary configuration: the arithmetic that produced the
