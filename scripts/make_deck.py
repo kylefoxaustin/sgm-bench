@@ -245,7 +245,7 @@ BW2 = [
  ("NVIDIA Orin AGX",  "72.8 ms",  "62 †",   "175",   "25%", "EMC net-of-idle, measured; memory-bound"),
  ("Thor OFA (ds=2)",  "3.38 ms",  "≈0 measured", "249", "1.4%", "EMC indistinguishable from idle at 296 fps — the block runs in its internals"),
  ("Orin OFA (ds=2)",  "14.9 ms",  "≈0.7 measured","175", "0.9%", "≈ exactly the irreducible in+out images (67 fps × ~6 MB)"),
- ("8x Cortex-A78C",   "211.9 ms", "withdrawn", "27.1", "--", "🔴 icc_bwmon failed its control: idle read 1.2/23.9/8.8 GB/s -- see note"),
+ ("8x Cortex-A78C",   "211.9 ms", "withdrawn", "27.1", "--", "🔴 window-dependent: 11.8 / 22.8 / 36.4 GB/s at 5 / mid / 40 frames -- see note"),
  ("8x Cortex-A720",   "238.3 ms", "18.9 †", "46.3",  "41%", "was 14% on A -- no longer comfortably compute-bound"),
  ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","approximate: their fused kernel parks state in VTCM"),
  ("Mali-G720 (10 CU)","380.0 ms", "11.8 †", "46.3",  "26%", "not bandwidth-bound"),
@@ -275,10 +275,11 @@ textbox(sB2, .6, 5.72, 12.2, .8,
         "pixels at the same wall-clock: it was already pressed against a different limit than arithmetic.)", 12.5, True, INK)
 textbox(sB2, .6, 6.62, 12.2, .45,
         "GREEN 'measured' = imx9_ddr0 DDR controller (i.MX95), Jetson EMC sampling (net of idle; % of the run's EMC clock), "
-        "🔴 The IQ-9075 A78C cell is WITHDRAWN: icc_bwmon is a governor THRESHOLD tracepoint, so its events are sparse and asynchronous. "
-        "The same workload read 11.8 / 22.8 / 36.4 GB/s as timed frames went 5 -> 40, and three IDLE windows read 1.2 / 23.9 / 8.8. The "
-        "instance was right (pmu@9091000 = llcc-bwmon, the DDR path; the nodes reading 27-29 are cpu-bwmon on the CPU->LLC path -- which is "
-        "what the original 'cross-confirmed within 5%' was actually reading). † = DERIVED: the 4.50 GB/frame streaming model "
+        "🔴 The IQ-9075 A78C cell is WITHDRAWN as WINDOW-DEPENDENT: the same workload reads 11.8 / 22.8 / 36.4 GB/s at 5 / mid / 40 timed "
+        "frames. icc_bwmon fires on THRESHOLD CROSSINGS, so sampling tracks a workload's phase variance -- SGM generates 825 events per run, "
+        "a steady memcpy only 4 -- and with 825 samples spanning 0.85-37 GB/s across a frame's phases, the scalar depends on what you "
+        "integrate over. (A first retraction blamed the instrument, using that steady copy as its control: the one workload it cannot see. "
+        "A collaborator reproduced 22.86/22.18 and calibrated it to 1.8% with a burst probe.) † = DERIVED: the 4.50 GB/frame streaming model "
         "(cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured frame time -- "
         "cache-reuse-free, so a slight under-count: it reproduces the A55x6's measured cell at 80%.",
         8.5, False, MUTED)

@@ -220,51 +220,39 @@ cells stay blank rather than derived: the O6's CMN DDR counters read zero under
 load (a vendor issue), and the NSP/5090 instruments are staged but not yet run.
 
 🔴 **A withdrawn measurement, kept visible because the failure is instructive.**
-An earlier revision of this table published an A78C cell of **22.8 GB/s (84% of
-ceiling, "bandwidth-SATURATED")**, read from the IQ-9075's `icc_bwmon`
-interconnect monitor. It is withdrawn: the instrument does not survive its own
-control experiment. Three checks killed it. **(1) Run-length dependence** — the
-identical workload read 11.8, 22.8 and 36.4 GB/s as the number of timed frames
-grew from 5 to 40; a bandwidth is not supposed to know how long you ran.
-**(2) An impossible idle** — three consecutive *idle* windows read 1.2, 23.9 and
-8.8 GB/s, and an idle board does not move 24 GB/s. `icc_bwmon` fires on the
-interconnect governor's threshold crossings, so its events are sparse and
-asynchronous; time-weighting them assumes a sample holds until the next event,
-which is false when one stray reading can own a multi-second gap.
-**(3) Incoherent absolutes** — during a streaming copy that self-reports
-27.6 GB/s the DDR-path monitor read 18.3, while SGM read 33–36 against a byte
-model predicting ~21. **The instance choice was right** (device tree:
-`pmu@9091000` is `qcom,sa8775p-llcc-bwmon`, the LLCC→DDR path; the two nodes
-reading 27–29 are `cpu-bwmon` on the CPU→LLC path, which is what the original
-"cross-confirmation within 5%" was actually reading). What is missing is
-vendor-level calibration of what `meas_kbps` measures over which window. Until
-that exists, this board has **no** DRAM-traffic number here — and the
-"peaks at 6 threads, not 8" behaviour in Traps returns to being an unexplained
-observation rather than a solved one.
+An earlier revision published an A78C cell of **22.8 GB/s (84% of ceiling,
+"bandwidth-SATURATED")**, read from the IQ-9075's `icc_bwmon` interconnect
+monitor. It is withdrawn because the identical workload read **11.8, 22.8 and
+36.4 GB/s** as the timed-frame count went 5 → 40: a scalar that moves 3× with
+run length measures the *window*, not the workload.
 
-‡ The OFA engines **cannot run this configuration's algorithm** (no two-scale
-cost fusion, no weighted P1, D=128 minimum) — these rows are the engines
-running **their own** SGM at matched input *and* output geometry: 1920×800 in,
-960×400 out via `downscaleFactor=2`, D=128, medians of 50 after a 30-frame
-warm (`nvofa/vpi_stereo_bench.py`). Throughput only, **not bit-exact, not
-gated**, and the MDE/s cell is deliberately blank — this configuration's work
-convention would be fiction for a different algorithm. Full-resolution-output
-variants: Thor 9.15 ms, Orin 54.94 ms.
-All software rows bit-exact to golden `bcb9cb0bd6f49799` — the same implementation tiers
-as the primary configuration: tuned CUDA on the NVIDIA GPUs, OpenCL on the
-Malis, NEON+OpenMP on the Arm cores, and the plain-C oracle as the floor. The
-CUDA port lacks the primary kernel's path-pairing pass, so its rows are the
-conservative side of what those GPUs can do. The Hexagon row is the tuned HVX port
-(median of five invocations, 0.75% spread, independently re-verified); the A78C
-rows are the same NEON tier as the other Arm cores (medians of five invocations
-on a board measured bimodal at ~9% — medians, not minima).
+⚠️ **The first published explanation for that withdrawal was itself wrong, and
+the correction is the more useful lesson.** It claimed the monitor "fails its
+own control," citing an idle window and a streaming copy that both behaved
+absurdly. But `icc_bwmon` fires on **threshold crossings**, so how well it
+samples depends on the workload's *phase variance*: SGM Configuration B
+generates **825 events** per run (census → cost → aggregation → argmin, changing
+constantly), while an 8-second steady `memcpy` generates **4**. The instrument
+is richly sampled on real workloads and nearly blind on steady ones — and the
+steady copy chosen to discredit it is exactly the case it cannot see. A
+collaborating session independently reproduced **22.86 / 22.18 GB/s** and
+calibrated the same monitor to **1.8%** of wall-clock using a short *burst*
+probe, which is transition-rich and therefore well sampled. Both measurements
+were honest; the control experiment was mis-chosen. **Discrediting an
+instrument with a workload it structurally cannot observe produces a
+confident, well-evidenced, wrong conclusion.**
 
-Worth noting because an earlier reading got it wrong: with the A78C briefly at
-the *oracle* tier the NSP appeared to lead the CPU cluster 3.29× on this
-configuration — a cross-**tier** comparison wearing a platform comparison's
-clothes. At matched tiers Configuration B looks like Configuration A: the
-six-thread cluster leads one NSP ~1.3× on both. Per *engine* the NSP holds its
-win — one NSP beats one A78C core 1.60× here (442.6 / 276.3).
+What remains genuinely open — and why the cell stays blank — is the window: with
+825 samples spanning **0.85 → 37 GB/s across a frame's phases**, the answer
+depends on what you integrate over. A window padded with image loading reads
+~22.8; one dominated by aggregation reads ~36. The cell returns when both sides
+measure the timed region only and agree.
+
+⚠️ Separately and genuinely wrong: the Configuration A footnote's claim that
+`icc_bwmon` "cross-confirmed" that board's copy-probe ceiling. Device tree shows
+`pmu@9091000` is `qcom,sa8775p-llcc-bwmon` (LLCC→DDR, the right monitor), while
+the nodes reading 27–29 GB/s are `cpu-bwmon` on the CPU→LLC path — a different
+point in the hierarchy. That corroboration is removed and does not come back.
 
 ## Configuration C: one variable at a time
 
@@ -299,8 +287,9 @@ than B.
 
 § Same convention and instruments as the Configuration B column, re-measured
 on the C runs: the A55 cluster rises 8.8 → 9.2 GB/s with the bigger scene. The
-A78C cell is blank for the reason given under Configuration B — its instrument
-was withdrawn, and with it the earlier claim that this cluster is saturated. Every software row is bit-exact to the golden; the A78C and Hexagon
+A78C cell is blank for the reason given under Configuration B — the number is
+window-dependent until both sides agree on the window, and with it the earlier
+claim that this cluster is saturated. Every software row is bit-exact to the golden; the A78C and Hexagon
 cells are medians of repeated invocations on that bimodal board (the NSP: five
 invocations, 1.7% spread, run with the unmodified Configuration B kernels).
 

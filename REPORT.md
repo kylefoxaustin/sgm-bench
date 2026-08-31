@@ -1131,56 +1131,72 @@ surfaces as a warning instead of a plausible number.
 
 ---
 
-## 🔴 A published bandwidth cell, withdrawn by its own control experiment
+## 🔴 A bandwidth cell withdrawn — and a first retraction whose *reason* was wrong
 
 The IQ-9075's DRAM traffic was published for one afternoon as **22.8 GB/s of a
 27.1 GB/s ceiling — 84%, "bandwidth-SATURATED"** — and offered as the mechanism
-behind that board's long-standing "peaks at 6 threads, not 8" behaviour. It is
-withdrawn. The measurement came from the SoC's `icc_bwmon` interconnect
-monitor, integrated time-weighted over the run. Three checks, run before the
-next publication rather than after, killed it:
+behind that board's "peaks at 6 threads, not 8" behaviour. The cell is
+withdrawn. This section records **two** errors, because the second one is mine
+and was committed while correcting the first.
 
-1. **Run-length dependence.** The identical Configuration B workload read
-   **11.8, 22.8 and 36.4 GB/s** as the timed-frame count went 5 → (mid) → 40.
-   A bandwidth must not know how long you ran. (At n=40 it *is* reproducible —
-   36.4 / 35.1 / 33.4 across three runs — which is what made the original
-   single-length reading look solid.)
-2. **An impossible idle.** Three consecutive **idle** windows read
-   **1.2, 23.9 and 8.8 GB/s**. An idle board does not move 24 GB/s.
-3. **Incoherent absolutes.** During a streaming copy that self-reports
-   27.6 GB/s, the DDR-path monitor read **18.3**; SGM read **33–36** against a
-   byte model predicting **~21**. No two of the three agree.
+**Why the cell came down.** Re-measuring the identical Configuration B workload
+through the same `icc_bwmon` harness gave **11.8, 22.8 and 36.4 GB/s** as the
+timed-frame count went 5 → (mid) → 40. A published scalar that moves 3× with
+run length is not a measurement of the workload; it is a measurement of the
+*window*. That alone is sufficient to withdraw it, and it stands.
 
-**The instance selection was correct**, which is worth recording because it was
-the suspected culprit: the device tree shows `pmu@9091000` is
-`qcom,sa8775p-llcc-bwmon` — the LLCC→DDR path, the right monitor — while the
-two nodes that read 27–29 GB/s are `qcom,sa8775p-cpu-bwmon` on the CPU→LLC
-path. ⚠️ Those CPU-side nodes are what the original *"ceiling cross-confirmed
-within 5% by icc_bwmon"* claim was actually reading: a CPU→LLC figure agreeing
-with a copy probe's own self-report, which is not corroboration of a DRAM
-number at all. Two wrong things agreed and looked like evidence.
+**⚠️ The reason I first published for the withdrawal was wrong.** The first
+version of this section asserted that `icc_bwmon` "fails its own control" and
+is "useless as an integrator," on three checks. Two of the three do not survive
+scrutiny, and the collaborating session who supplied the recipe reported the
+opposite result within a minute of my retraction — an independent reproduction
+of **22.86 and 22.18 GB/s**, plus a ground-truth calibration agreeing with
+wall-clock to **1.8%**. Working out how both of us could be honest and
+disagree is the actual finding here:
 
-The mechanism is ordinary once seen. `icc_bwmon` is not a counter; it is the
-interconnect **governor's threshold-crossing tracepoint**. Its events are
-sparse and asynchronous, so time-weighting them — assuming a sample holds until
-the next event — lets a single stray reading own a multi-second gap. That is
-fine for a governor and useless as an integrator.
+**The monitor fires on threshold crossings, so its sampling rate is a property
+of the workload's *phase variance*, not of time.** Measured directly:
 
-What remains true: the copy-probe **ceiling** (27.1 GB/s, re-measured at 27.6)
-stands, because it is a self-contained probe that does not depend on this
-instrument. What is gone is any *achieved* DRAM figure for this board, and with
-it the saturation explanation. The 6-thread peak returns to being an
-observation without a mechanism.
+| workload | character | events in window |
+|---|---|---|
+| SGM Configuration B, 40 frames | census → cost → aggregation → argmin, per frame | **825** |
+| 8-second steady `memcpy` | one phase, unchanging | **4** |
 
-⭐ The general rule this earns: **an instrument must pass a control before its
-output is a measurement.** The idle window costs twenty seconds and would have
-caught this before publication; the run-length sweep costs one extra run. Both
-were run only *after* the number was already in a README, a deck and a message
-to the collaborator who supplied the recipe. The recipe was not at fault — its
-author flagged the time-weighting subtlety explicitly — but a caveat honoured
-in the arithmetic is not the same as a control experiment, which is the same
-lesson as *"having a name for a failure is not the same as having checked for
-it,"* recorded above, arriving for the second time from the other direction.
+So the instrument is **richly sampled on real phase-varying workloads and
+nearly blind on steady ones** — and the "control experiment" I chose to
+discredit it with, a sustained streaming copy, is precisely the pathological
+case. That invalidates two of my three checks: the copy reading 18.3 GB/s
+against a 27.6 self-report was *undersampling*, not mis-scaling, and the idle
+windows reading 1.2 / 23.9 / 8.8 GB/s were the same sparse regime, where a
+single stray transition owns a multi-second gap. The collaborator's calibration
+used a short burst probe — transition-rich, hence well sampled — which is why
+theirs agreed to 1.8% and mine failed by 20×.
+
+**What is actually unresolved**, and why the cell stays down: with 825 samples
+ranging **0.85 → 37 GB/s across the frame's phases**, a single scalar depends
+entirely on which window you integrate. A window padded with image loading and
+golden checking reads ~22.8; a window dominated by the aggregation phases reads
+~36. Both are arithmetically correct means of different things. The cell
+returns when the two sides agree on a window definition — the timed region
+only, matching the reported frame time — and both harnesses reproduce it.
+
+⭐ **Two rules, and the second cost more than the first.**
+**(1) An instrument must pass a control before its output is a measurement** —
+the run-length sweep is cheap and would have caught this before publication.
+**(2) A control experiment is itself an instrument, and can be mis-chosen.**
+Discrediting a counter with a workload it structurally cannot see produces a
+confident, well-evidenced, wrong conclusion — and I shipped that conclusion
+publicly, in a commit message and a message to the person whose recipe I was
+declaring broken. Retracting carelessly is a way of being wrong that feels like
+rigour, which makes it the more dangerous of the two.
+
+⚠️ One consequence worth stating plainly: the "cross-confirmed within 5% by
+icc_bwmon" claim in the Configuration A footnote *was* genuinely wrong, and
+stays removed. Device tree: `pmu@9091000` is `qcom,sa8775p-llcc-bwmon`
+(LLCC→DDR, the right monitor); the nodes that read 27–29 GB/s are
+`qcom,sa8775p-cpu-bwmon` on the CPU→LLC path. That corroboration was reading a
+different point in the hierarchy — a category error independent of everything
+above.
 
 ## Against published work
 
