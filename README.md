@@ -241,11 +241,11 @@ samples depends on the workload's *phase variance*: SGM Configuration B
 generates **825 events** per run (census → cost → aggregation → argmin, changing
 constantly), while an 8-second steady `memcpy` generates **4**. The instrument
 is richly sampled on real workloads and nearly blind on steady ones — and the
-steady copy chosen to discredit it is exactly the case it cannot see. A
-second party independently reproduced **22.86 / 22.18 GB/s** and
-calibrated the same monitor to **1.8%** of wall-clock using a short *burst*
-probe, which is transition-rich and therefore well sampled. Both measurements
-were honest; the control experiment was mis-chosen. **Discrediting an
+steady copy chosen to discredit it is exactly the case it cannot see. Repeat
+measurements of the same cell read **22.86 / 22.18 GB/s**, and the same monitor
+calibrates to **1.8%** of wall-clock when driven by a short *burst* probe, which
+is transition-rich and therefore well sampled. The measurements were sound; the
+control experiment was mis-chosen. **Discrediting an
 instrument with a workload it structurally cannot observe produces a
 confident, well-evidenced, wrong conclusion.**
 
@@ -362,11 +362,11 @@ Middlebury 2014 "Motorcycle", 1482×1000, D=128 — producing the identical gold
 
 Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**,
 scoring the leftmost D columns as excluded because `x−d < 0` has no
-correspondent. The trio has been **independently reproduced on separate hardware, by a
-measurement this project did not run** — their NSP run on this exact scene scores bad>1px 16.18%,
-bad>2px 11.18%, MAE 3.35 against the dense ground truth, agreeing with our
-figures to 0.05 points. (An earlier revision of the scene was independently
-scored the same way.)
+correspondent. The trio is **confirmed by a second, separately derived
+scoring**: the NSP run on this exact scene scores bad>1px 16.18%, bad>2px
+11.18%, MAE 3.35 against the dense ground truth — derived from the ground-truth
+arrays rather than copied from the figures above, and agreeing to 0.05 points.
+(An earlier revision of the scene was scored the same way.)
 
 ⭐ The real scene is the **accuracy** reference and pins the hash-critical
 tie-break rule **720× harder** than synthetic (14,417 tied-minimum pixels

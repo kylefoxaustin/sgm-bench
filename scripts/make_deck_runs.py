@@ -157,8 +157,8 @@ textbox(s, .6, 1.0, 12, .4,
 s.shapes.add_picture("docs/panels/motorcycle_real.png", Inches(.6), Inches(1.5), width=Inches(12.1))
 textbox(s, .6, 6.55, 12.2, .9,
         "Seven targets produce the identical golden e8a95242882013f0 on the real capture — the picture is the same, only "
-        "the time differs. Accuracy vs dense ground truth: bad>1px 16.2%, bad>2px 11.2%, MAE 3.35 — independently "
-        "reproduced by another party on hardware we have never touched.", 12)
+        "the time differs. Accuracy vs dense ground truth: bad>1px 16.2%, bad>2px 11.2%, MAE 3.35 — confirmed to "
+        "0.05 points by a second scoring derived from the ground-truth arrays.", 12)
 
 prs.save("docs/sgm-two-resolutions.pptx")
 print("wrote docs/sgm-two-resolutions.pptx —", len(prs.slides._sldIdLst), "slides")

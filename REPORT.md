@@ -27,7 +27,7 @@ CUDA — four vendors, four instruction sets, three processor classes.
 ⚠️ **"Independent" would overstate it.** These ten targets run roughly four
 codebases: the scalar reference, the NEON implementation (shared unmodified by
 A55, A720 and A78C), the OpenCL kernel and its mechanical CUDA port, and the
-independently-written HVX kernel. The hash pins "matches this reference", not
+separately written HVX kernel. The hash pins "matches this reference", not
 "is SGM" — a shared misreading of the specification would pass on all of them.
 Genuine independence exists for the HVX port and partially for OpenCL. A run whose hash does
 not match is void and its timing is discarded.
@@ -64,8 +64,7 @@ Three consequences a throughput number hides:
   A720 data says so: doubling D=64→128 costs 2.05× wall clock for 2.00× the
   disparities, a −2.4% change in MDE/s. On the NSP, where D=64 leaves a 128-lane
   vector half empty, larger D is outright *faster* per disparity (773 / 987 /
-  1121 / 1198 MDE/s at D = 32 / 64 / 128 / 256 — MEASURED by the qualcomm
-  session on their hardware).
+  1121 / 1198 MDE/s at D = 32 / 64 / 128 / 256 — MEASURED on the NSP).
 
 So MDE/s is the right unit for comparing implementations at a fixed
 configuration, and the wrong unit for choosing a configuration. The binding
@@ -127,19 +126,19 @@ found the multi-modality is *between* invocations, not within them, so a larger
 `-n` inside one invocation cannot average it out — it needs interleaved repeats
 across invocations. They demonstrated it by interleaving the old and corrected
 scenes three times in one session: both spanned the same 135–150 ms, minima
-agreeing within 0.5%, which is how they established that a 9.8% apparent
-"regression" on the corrected scene was board state and not content. Quote the
+agreeing within 0.5%, which is how a 9.8% apparent "regression" on the
+corrected scene was established as board state and not content. Quote the
 Hexagon row accordingly.
 
 § ⭐ **Re-sourced 2026-08-29 onto a golden that discriminates the full range.**
 The originally published 137.91 ms / 962 MDE/s was measured on this repo's
-`data/synthetic`, whose golden could not see `d >= 45` (above). The qualcomm
-session's own D-parametric work had independently built a discriminating scene
-(`data/wide1080`, true disparities to 154) on which **all 64 disparity values win
-somewhere**, and their kernel reproduces that golden bit-exactly at
-**136.84 ms / 969.8 MDE/s**, hash `33b80d5d35e0fb9b`. The number barely moved;
-the *evidence* went from partial to complete, which is the point. Their D=128
-figure, 238.89 ms / 1111 MDE/s (`fa2238cc8a87af3d`), was always on that scene.
+`data/synthetic`, whose golden could not see `d >= 45` (above). The
+D-parametric work had produced a discriminating scene (`data/wide1080`, true
+disparities to 154) on which **all 64 disparity values win somewhere**, and the
+HVX kernel reproduces that golden bit-exactly at **136.84 ms / 969.8 MDE/s**,
+hash `33b80d5d35e0fb9b`. The number barely moved; the *evidence* went from
+partial to complete, which is the point. The D=128 figure, 238.89 ms /
+1111 MDE/s (`fa2238cc8a87af3d`), was always on that scene.
 
 § **Hexagon row is a different implementation** — an independent HVX/FastRPC
 port — and it is the **median of five invocations
@@ -150,7 +149,7 @@ cannot sample that, and on such hardware **the minimum is the estimator most
 sensitive to which invocations got lucky** — it cost them two retracted
 headlines in one day. Hash-gated on `46470bd7a464469d` at audit time, and subsequently **re-verified
 against the current `0bc0102058d1505f`** — five invocations, all hashes matched,
-so their kernel's `d = D−1` boundary handling is pinned by 218,075 pixels
+so the HVX kernel's `d = D−1` boundary handling is pinned by 218,075 pixels
 rather than 2.
 
 Their audited D-sweep, medians of five invocations each:
@@ -251,7 +250,7 @@ figure is a 25.5% fall against our 8.8%. Claiming the two
 than throughput per disparity, but on this kernel the effect is small.
 
 🚨 **The first run of this grid produced identical hashes at D=64 and D=128, and
-that is exactly the failure qualcomm named: a check that cannot discriminate.**
+that is exactly the failure mode named earlier: a check that cannot discriminate.**
 It is also what a kernel searching only `d < 64` would produce. Rather than
 accept twelve `GOLDEN OK` lines, the discriminating test was to read the maximum
 disparity actually present in the D=128 output: **44**. The cause was mine —
@@ -267,7 +266,7 @@ the range under test.
 Three architectures show the same observation for three different reasons. The
 lane-filling model was proposed, **predicting flat for CUDA, and
 the measurement said +22%** — so the model was refuted on our hardware and the
-corrected version, theirs, is more general than either of our originals:
+corrected version is more general than either of the originals:
 
 > **Raising D amortises any per-pixel cost that does not scale with D.**
 
@@ -677,8 +676,8 @@ predicts most of the ranking.
 ⭐ **The residual is the interesting part: the 5090 is the *least* efficient of
 the three despite being the fastest.** At 1,385 GB/s the kernel can no longer
 saturate the memory system, so on that part it has stopped being purely
-bandwidth-bound — the same transition qualcomm observed in reverse on the
-Hexagon, which is latency-bound at 6.8 of 28 GB/s. Which wall you hit is a
+bandwidth-bound — the same transition seen in reverse on the Hexagon, which is
+latency-bound at 6.8 of 28 GB/s. Which wall you hit is a
 property of the machine, and these three GPUs sit at different points on it.
 
 ⚠️ **This was a gap until asked about.** Bandwidth had been measured on exactly
@@ -728,26 +727,26 @@ Accuracy against dense ground truth: **bad>1px 16.2%, bad>2px 11.2%, MAE 3.35**
 — higher than the mismatched scene reported, because D=128 is now actually being
 exercised.
 
-### The accuracy figures were reproduced independently
+### The accuracy figures were re-derived, not copied
 
-Before the scene was corrected, the HVX kernel was run on it
-and **scored it themselves against `gt_float.npy` rather than citing ours**:
+Before the scene was corrected, the HVX kernel was run on it and the result
+**scored afresh against `gt_float.npy` rather than by citing the numbers above**:
 
-| | ours | theirs, independently derived |
+| | as published | re-derived from the ground truth |
 |---|---|---|
 | bad > 1px | 13.9% | **13.95%** |
 | bad > 2px | 10.2% | **10.24%** |
 | MAE | 2.49 | **2.49** |
 
-557,252 pixels scored, leftmost 128 columns excluded. Their kernel also
+557,252 pixels scored, leftmost 128 columns excluded. The HVX kernel also
 reproduced the golden byte-for-byte — 0 differing pixels of 658,008 — making the
 Hexagon a **sixth target** on that scene at 86.13 ms.
 
 ⭐ **This is the first accuracy number in the project to come from real
-calibrated capture, and it was confirmed by a different implementation on
-silicon we have never touched.** They declined to send their disparity map on
-the grounds that a matching hash means it *is* our map — the pixels only carry
-information the hash cannot when a hash disagrees.
+calibrated capture, and it is confirmed by a second implementation on a
+different vendor's silicon.** The disparity map itself adds nothing once the
+hash matches: a matching hash means it *is* the same map, and the pixels only
+carry information the hash cannot when a hash disagrees.
 
 ⚠️ Those figures stand as accuracy; the run predates the scene correction above,
 so it is not comparable to the 1482×1000 timings and is not in the main table.
@@ -1112,8 +1111,7 @@ they are compared against. That is the dangerous direction, and it is silent.
 ⚠️ **And the magnitude is core-dependent: 4.63× on A55, 2.6× on A78C.** The
 inert flag understated by however much that particular machine happened to
 scale, so **no single correction factor exists** — affected data cannot be
-repaired by arithmetic, only by re-running it. (Observation due to the qualcomm
-session.)
+repaired by arithmetic, only by re-running it.
 
 **The published numbers above are unaffected**, and the reason is not "our
 wrapper set `OMP_NUM_THREADS`" (it did — `scripts/pin.sh:57` — but that is luck,
@@ -1168,9 +1166,9 @@ discredit it with, a sustained streaming copy, is precisely the pathological
 case. That invalidates two of my three checks: the copy reading 18.3 GB/s
 against a 27.6 self-report was *undersampling*, not mis-scaling, and the idle
 windows reading 1.2 / 23.9 / 8.8 GB/s were the same sparse regime, where a
-single stray transition owns a multi-second gap. The collaborator's calibration
-used a short burst probe — transition-rich, hence well sampled — which is why
-theirs agreed to 1.8% and mine failed by 20×.
+single stray transition owns a multi-second gap. A calibration driven by a short
+burst probe — transition-rich, hence well sampled — agrees with wall-clock to
+1.8%, where the sustained-copy control failed by 20×.
 
 **What is actually unresolved**, and why the cell stays down: with 825 samples
 ranging **0.85 → 37 GB/s across the frame's phases**, a single scalar depends

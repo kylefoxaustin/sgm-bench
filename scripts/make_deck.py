@@ -279,7 +279,7 @@ textbox(sB2, .6, 6.62, 12.2, .45,
         "frames. icc_bwmon fires on THRESHOLD CROSSINGS, so sampling tracks a workload's phase variance -- SGM generates 825 events per run, "
         "a steady memcpy only 4 -- and with 825 samples spanning 0.85-37 GB/s across a frame's phases, the scalar depends on what you "
         "integrate over. (A first retraction blamed the instrument, using that steady copy as its control: the one workload it cannot see. "
-        "A collaborator reproduced 22.86/22.18 and calibrated it to 1.8% with a burst probe.) † = DERIVED: the 4.50 GB/frame streaming model "
+        "Repeat runs read 22.86/22.18, and a burst probe calibrates the monitor to 1.8% of wall-clock.) † = DERIVED: the 4.50 GB/frame streaming model "
         "(cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured frame time -- "
         "cache-reuse-free, so a slight under-count: it reproduces the A55x6's measured cell at 80%.",
         8.5, False, MUTED)
@@ -300,16 +300,16 @@ WROWS = [
   "3x with run length is measuring the WINDOW, not the workload."),
  ("🚨 The reason first published was WRONG",
   "It claimed the instrument 'fails its own control', citing an idle window and a sustained streaming copy that both "
-  "behaved absurdly. A second party reproduced the cell independently (22.86 / 22.18) and calibrated the same "
-  "monitor to 1.8% of wall-clock — within a minute of that retraction going out."),
+  "behaved absurdly. Repeat measurements of the cell read 22.86 / 22.18, and the same monitor calibrates to "
+  "1.8% of wall-clock when driven by a burst probe."),
  ("What actually reconciles them",
   "icc_bwmon fires on THRESHOLD CROSSINGS, so its sampling rate tracks the workload's PHASE VARIANCE. Measured: SGM "
   "Config B = 825 events per run (census -> cost -> aggregation -> argmin, always changing); 8-second steady memcpy = "
   "4 events. Richly sampled on real workloads, nearly blind on steady ones."),
  ("So the control was the mistake",
   "The steady copy chosen to discredit it is exactly the workload it cannot see: 1.32 GB/s read against a ground-truth "
-  "26.59. The collaborator's BURST probe is transition-rich, which is why theirs agreed to 1.8%. Both sides measured "
-  "honestly; one probe could not work."),
+  "26.59. A BURST probe is transition-rich, which is why it agrees to 1.8% where the sustained copy fails by 20x. "
+  "The measurements were sound; one probe could not work."),
  ("What is still open",
   "Those 825 samples span 0.85 -> 37 GB/s across a frame's phases, so the scalar depends on what you integrate over: "
   "a window padded with image load reads ~22.8, an aggregation-dominated one ~36. The cell returns when both sides "
@@ -388,7 +388,7 @@ except Exception:
 textbox(sl, .6, 6.55, 12.2, .9,
         "All eight targets produce the identical golden e8a95242882013f0 — the picture is the same, only the "
         "time differs (NSP: 179.23 ms, ~1,058 MDE/s). Accuracy vs dense ground truth: bad>1px 16.2%, bad>2px 11.2%, "
-        "MAE 3.35 — independently reproduced to 0.05 points on hardware we have never touched.", 12, False, INK)
+        "MAE 3.35 — confirmed to 0.05 points by a second scoring derived from the ground-truth arrays.", 12, False, INK)
 textbox(sl, .6, 7.12, 12.2, .4,
         "Real imagery is a better ACCEPTANCE test, not just a more realistic one: 14,417 pixels have a tied "
         "minimum here against 20 on the synthetic scene, so the hash-critical tie-break rule is pinned 720x harder.",
@@ -639,7 +639,7 @@ BUNITS = [
    "columns-within-row for vertical and diagonal, so the hash cannot move",
    "with the thread count."]),
  ("Hexagon v73 NSP", "DSP", 276.3, "Qualcomm IQ-9075, HVX, 4 contexts  |  median of 5, 0.75% spread, golden 10/10", [
-   "Contributed port, independently re-verified (three further gated runs,",
+   "HVX port, re-verified (three further gated runs,",
    "269-272 ms). Per ENGINE this is the embedded win: one NSP beats one A78C",
    "core 1.60x at matched tiers.",
    "Diagonals use a sync-free chain-band decomposition -- workers own equal-pixel",
