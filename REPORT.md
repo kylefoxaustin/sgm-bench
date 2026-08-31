@@ -1131,6 +1131,57 @@ surfaces as a warning instead of a plausible number.
 
 ---
 
+## 🔴 A published bandwidth cell, withdrawn by its own control experiment
+
+The IQ-9075's DRAM traffic was published for one afternoon as **22.8 GB/s of a
+27.1 GB/s ceiling — 84%, "bandwidth-SATURATED"** — and offered as the mechanism
+behind that board's long-standing "peaks at 6 threads, not 8" behaviour. It is
+withdrawn. The measurement came from the SoC's `icc_bwmon` interconnect
+monitor, integrated time-weighted over the run. Three checks, run before the
+next publication rather than after, killed it:
+
+1. **Run-length dependence.** The identical Configuration B workload read
+   **11.8, 22.8 and 36.4 GB/s** as the timed-frame count went 5 → (mid) → 40.
+   A bandwidth must not know how long you ran. (At n=40 it *is* reproducible —
+   36.4 / 35.1 / 33.4 across three runs — which is what made the original
+   single-length reading look solid.)
+2. **An impossible idle.** Three consecutive **idle** windows read
+   **1.2, 23.9 and 8.8 GB/s**. An idle board does not move 24 GB/s.
+3. **Incoherent absolutes.** During a streaming copy that self-reports
+   27.6 GB/s, the DDR-path monitor read **18.3**; SGM read **33–36** against a
+   byte model predicting **~21**. No two of the three agree.
+
+**The instance selection was correct**, which is worth recording because it was
+the suspected culprit: the device tree shows `pmu@9091000` is
+`qcom,sa8775p-llcc-bwmon` — the LLCC→DDR path, the right monitor — while the
+two nodes that read 27–29 GB/s are `qcom,sa8775p-cpu-bwmon` on the CPU→LLC
+path. ⚠️ Those CPU-side nodes are what the original *"ceiling cross-confirmed
+within 5% by icc_bwmon"* claim was actually reading: a CPU→LLC figure agreeing
+with a copy probe's own self-report, which is not corroboration of a DRAM
+number at all. Two wrong things agreed and looked like evidence.
+
+The mechanism is ordinary once seen. `icc_bwmon` is not a counter; it is the
+interconnect **governor's threshold-crossing tracepoint**. Its events are
+sparse and asynchronous, so time-weighting them — assuming a sample holds until
+the next event — lets a single stray reading own a multi-second gap. That is
+fine for a governor and useless as an integrator.
+
+What remains true: the copy-probe **ceiling** (27.1 GB/s, re-measured at 27.6)
+stands, because it is a self-contained probe that does not depend on this
+instrument. What is gone is any *achieved* DRAM figure for this board, and with
+it the saturation explanation. The 6-thread peak returns to being an
+observation without a mechanism.
+
+⭐ The general rule this earns: **an instrument must pass a control before its
+output is a measurement.** The idle window costs twenty seconds and would have
+caught this before publication; the run-length sweep costs one extra run. Both
+were run only *after* the number was already in a README, a deck and a message
+to the collaborator who supplied the recipe. The recipe was not at fault — its
+author flagged the time-weighting subtlety explicitly — but a caveat honoured
+in the arithmetic is not the same as a control experiment, which is the same
+lesson as *"having a name for a failure is not the same as having checked for
+it,"* recorded above, arriving for the second time from the other direction.
+
 ## Against published work
 
 SOURCED — ReS2tAC, *Sensors* 21(11):3938, 2021, Tables 6 and 7.

@@ -204,7 +204,7 @@ BWROWS = [
  ("Mali-G720 (10 CU)","--",       "16.1", "46.3",  "35%", "not bandwidth-bound"),
  ("8x Cortex-A720",   "--",       "6.6",  "46.3",  "14%", "compute-bound"),
  ("Hexagon v73 NSP",  "--",       "6.8",  "28",    "24%", "LATENCY-bound (28 GB/s available, 6.8 used)"),
- ("8x Cortex-A78C",   "--",       "3.4",  "27.1",  "13%", "compute-bound on A; ceiling MEASURED via copy probe + icc_bwmon"),
+ ("8x Cortex-A78C",   "--",       "3.4",  "27.1",  "13%", "compute-bound on A; ceiling MEASURED via copy probe"),
  ("6x Cortex-A55",    "--",       "1.1",  "13.7",  "8%",  "compute-bound"),
 ]
 tblW = sBW.shapes.add_table(len(BWROWS)+1, 6, Inches(.6), Inches(2.0), Inches(12.1), Inches(0.4)).table
@@ -237,14 +237,15 @@ textbox(sB2, .6, .32, 12.2, .8, "Configuration B moves the memory walls", 30, Tr
 textbox(sB2, .6, 1.1, 12.2, .5,
         "Same slide for the block-flavoured workload (1920x800, two scales, 8 paths). The 8-path uint16 S-plane "
         "streams ~3.1 GB per frame on its own; the pipeline's streaming byte model totals 4.50 GB/frame. Three cells "
-        "are MEASURED at the i.MX95 DDR controller and three more at other instruments (green); the † cells are DERIVED as 4.50 GB / the measured frame time.", 11.5, False, MUTED)
+        "are MEASURED at the i.MX95 DDR controller and two more by Jetson EMC sampling (green); the † cells are DERIVED as 4.50 GB / the "
+        "measured frame time. One cell was WITHDRAWN today after its instrument failed a control experiment -- the red row.", 11.5, False, MUTED)
 BW2 = [
  ("NVIDIA RTX 5090",  "9.08 ms",  "495 †",  "1,385", "36%", "memory-bound; below A's 42% (kernel lacks path-pairing)"),
  ("NVIDIA Thor",      "45.1 ms",  "100 †",  "249",   "24%", "EMC net-of-idle, measured; ≈ the model's 40% freq-normalized"),
  ("NVIDIA Orin AGX",  "72.8 ms",  "62 †",   "175",   "25%", "EMC net-of-idle, measured; memory-bound"),
  ("Thor OFA (ds=2)",  "3.38 ms",  "≈0 measured", "249", "1.4%", "EMC indistinguishable from idle at 296 fps — the block runs in its internals"),
  ("Orin OFA (ds=2)",  "14.9 ms",  "≈0.7 measured","175", "0.9%", "≈ exactly the irreducible in+out images (67 fps × ~6 MB)"),
- ("8x Cortex-A78C",   "211.9 ms", "22.8 measured", "27.1", "84%", "SATURATED -- and why this board peaks at 6 threads, not 8"),
+ ("8x Cortex-A78C",   "211.9 ms", "withdrawn", "27.1", "--", "🔴 icc_bwmon failed its control: idle read 1.2/23.9/8.8 GB/s -- see note"),
  ("8x Cortex-A720",   "238.3 ms", "18.9 †", "46.3",  "41%", "was 14% on A -- no longer comfortably compute-bound"),
  ("Hexagon v73 NSP",  "276.3 ms", "~16 †",  "28",    "~56%","approximate: their fused kernel parks state in VTCM"),
  ("Mali-G720 (10 CU)","380.0 ms", "11.8 †", "46.3",  "26%", "not bandwidth-bound"),
@@ -268,17 +269,19 @@ for rr_, row in enumerate(BW2, start=1):
         if (c in (2, 4)) and "measured" in str(t):
             run.font.color.rgb = RGBColor(0x18, 0x7A, 0x33)
 textbox(sB2, .6, 5.72, 12.2, .8,
-        "The headline: at Configuration B the CPU walls MOVE. The A720 cluster jumps from 14% to 41% of its bus and "
-        "the six-A55 cluster to 64% -- the 8-path uint16 S-plane converts comfortably compute-bound CPUs into "
-        "bandwidth-pressured ones. (It is also why the A720 cluster absorbed Configuration C's extra pixels at the "
-        "same wall-clock: it was already pressed against a different limit than arithmetic.)", 12.5, True, INK)
-textbox(sB2, .6, 6.68, 12.2, .45,
+        "The headline: at Configuration B the CPU walls MOVE. The six-A55 cluster goes to 64% of the whole chip's bus -- MEASURED at "
+        "the DDR controller -- and the A720 cluster's derived draw triples. The 8-path uint16 S-plane converts comfortably "
+        "compute-bound CPUs into bandwidth-pressured ones. (It is also why the A720 cluster absorbed Configuration C's extra "
+        "pixels at the same wall-clock: it was already pressed against a different limit than arithmetic.)", 12.5, True, INK)
+textbox(sB2, .6, 6.62, 12.2, .45,
         "GREEN 'measured' = imx9_ddr0 DDR controller (i.MX95), Jetson EMC sampling (net of idle; % of the run's EMC clock), "
-        "or the IQ-9075's icc_bwmon interconnect monitor (time-weighted, net of idle; instance 9091000, others read 23-27). "
-        "† = DERIVED: 4.50 GB/frame "
-        "streaming model (cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured "
-        "frame time -- cache-reuse-free, so a slight under-count: the model reproduces the A55x6's measured cell at 80%.",
-        10, False, MUTED)
+        "🔴 The IQ-9075 A78C cell is WITHDRAWN: icc_bwmon is a governor THRESHOLD tracepoint, so its events are sparse and asynchronous. "
+        "The same workload read 11.8 / 22.8 / 36.4 GB/s as timed frames went 5 -> 40, and three IDLE windows read 1.2 / 23.9 / 8.8. The "
+        "instance was right (pmu@9091000 = llcc-bwmon, the DDR path; the nodes reading 27-29 are cpu-bwmon on the CPU->LLC path -- which is "
+        "what the original 'cross-confirmed within 5%' was actually reading). † = DERIVED: the 4.50 GB/frame streaming model "
+        "(cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured frame time -- "
+        "cache-reuse-free, so a slight under-count: it reproduces the A55x6's measured cell at 80%.",
+        8.5, False, MUTED)
 
 # ---------------- one slide per unit ----------------
 for lab, cls, ms, sil, notes in UNITS:
@@ -371,7 +374,7 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
 baseB = 14265.0
 CEIL = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
         "NVIDIA OFA on Thor (ds=2)": "≈0 / 249", "NVIDIA OFA on Orin (ds=2)": "0.7 / 175",
-        "Cortex-A78C x8 (6 threads)": "22.8 / 27.1", "Cortex-A78C x1": "— / 27.1",
+        "Cortex-A78C x8 (6 threads)": "— / 27.1", "Cortex-A78C x1": "— / 27.1",
         "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
         "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
         "Cortex-A55 x6": "8.8 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
@@ -409,8 +412,8 @@ for i, (big, small) in enumerate(CALLOUTS_B):
 
 textbox(sB, .6, 7.24, 12.2, .26,
         "MDE/s (work) = both scales: (0.384+1.536) Mpx x 64 / runtime. OFA rows: their OWN SGM at matched geometry, throughput only. "
-        "‡ achieved / ceiling GB/s, MEASURED cells only (A55+G310: i.MX95 DDR controller, 64% of the chip's bus at 6xA55; A78C: icc_bwmon, "
-        "84% = SATURATED, hence the 6-thread peak; OFA: EMC ~ idle). Blank: A720/G720 CMN counters dead, NSP/5090 staged. Details: bandwidth slide.",
+        "‡ achieved / ceiling GB/s, MEASURED cells only (A55+G310: i.MX95 DDR controller, 64% of the chip's bus at 6xA55; OFA: EMC ~ idle). "
+        "Blank: A720/G720 CMN counters dead, NSP/5090 staged, and the A78C icc_bwmon cell WITHDRAWN (failed its idle control). Details: bandwidth slide.",
         8, False, MUTED)
 
 # ---------------- Configuration B slide ----------------
@@ -469,7 +472,7 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
 baseC = 18020.0
 CEILC = {"NVIDIA RTX 5090": "— / 1,385", "NVIDIA Thor": "— / 249", "NVIDIA Orin AGX": "— / 175",
          "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
-         "Cortex-A78C x8 (6 threads)": "23.8 / 27.1", "Cortex-A78C x1": "— / 27.1",
+         "Cortex-A78C x8 (6 threads)": "— / 27.1", "Cortex-A78C x1": "— / 27.1",
          "Cortex-A720 x8": "— / 46.3", "Cortex-A720 x1": "— / 46.3",
          "Hexagon v73 NSP": "— / 28", "Mali-G720 (10 CU)": "— / 46.3",
          "Cortex-A55 x6": "9.2 / 13.7", "Cortex-A55 x1": "2.7 / 13.7",
@@ -503,8 +506,8 @@ textbox(sC, .6, 6.68, 12.2, .5,
         "2.68x), so the extra 35% of pixels ride in the cluster's slack for free.", 10.5, False, INK)
 textbox(sC, .6, 7.18, 12.2, .3,
         "A78C/NSP cells: medians of repeated invocations (bimodal board). OFA rows: matched geometry, OWN algorithm at D=128 -- not bit-exact. "
-        "‡ achieved / ceiling GB/s, MEASURED cells only: A55 at the DDR controller (67% of the chip's bus at 6 threads); A78C via icc_bwmon, "
-        "23.8 of 27.1 -- still saturated at the bigger scene. Blank: A720/G720 CMN counters dead, NSP/5090 staged.",
+        "‡ achieved / ceiling GB/s, MEASURED cells only: A55 at the DDR controller (67% of the chip's bus at 6 threads). Blank: A720/G720 CMN "
+        "counters dead, NSP/5090 staged, A78C icc_bwmon cell WITHDRAWN (failed its idle control -- see the Config B bandwidth slide).",
         8.5, False, MUTED)
 
 # ---------------- Configuration B: one slide per unit ----------------
