@@ -1157,8 +1157,10 @@ of the workload's *phase variance*, not of time.** Measured directly:
 
 | workload | character | events in window |
 |---|---|---|
-| SGM Configuration B, 40 frames | census → cost → aggregation → argmin, per frame | **825** |
-| 8-second steady `memcpy` | one phase, unchanging | **4** |
+| SGM Configuration B, 40 frames — ALL three bwmon instances | census → cost → aggregation → argmin | **825–918** |
+| 8-second steady `memcpy` — all instances | one phase, unchanging | **4–6** |
+| SGM Config B — **DRAM-facing node only** (`pmu@9091000`) | the number that actually matters | **35** |
+| steady `memcpy` — **DRAM-facing node only** | | **4** |
 
 So the instrument is **richly sampled on real phase-varying workloads and
 nearly blind on steady ones** — and the "control experiment" I chose to
@@ -1170,7 +1172,24 @@ single stray transition owns a multi-second gap. A calibration driven by a short
 burst probe — transition-rich, hence well sampled — agrees with wall-clock to
 1.8%, where the sustained-copy control failed by 20×.
 
-**What is actually unresolved**, and why the cell stays down: with 825 samples
+⚠️ **A correction to the paragraph above, made 2026-08-31.** The "825 events"
+counted **all three bwmon instances**. On the DRAM-facing node alone a 40-frame
+run emits **35**. The phase-variance finding survives (35 vs 4 against the steady
+control) but at one twentieth the evidential weight originally claimed, and the
+number should never have been quoted as the DRAM-path sample count.
+
+🚨 **And the window hypothesis is refuted.** I predicted that integrating the
+timed region only would reconcile a 22.2–22.9 GB/s reading with my 33–36. Tested
+on the same board: it moves the figure by about **1 GB/s**, not the ~50% needed.
+**The real discrepancy is the event rate itself** — two competent harnesses, same
+board, same binary, same tracepoint, disagree by **3–8×** on how many samples the
+monitor emits (35 vs 9–13 on the DRAM node; 918 vs 107–114 across all three).
+Every integration method one might argue about sits downstream of that: two
+different samplings of one signal cannot produce the same mean. **That is a
+reproducibility failure of the instrument, not a disputed number**, and it is a
+firmer reason to withhold the cell than any argument about arithmetic.
+
+**What was unresolved**, and why the cell stays down: with the samples
 ranging **0.85 → 37 GB/s across the frame's phases**, a single scalar depends
 entirely on which window you integrate. A window padded with image loading and
 golden checking reads ~22.8; a window dominated by the aggregation phases reads

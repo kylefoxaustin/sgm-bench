@@ -233,27 +233,36 @@ monitor. It is withdrawn because the identical workload read **11.8, 22.8 and
 36.4 GB/s** as the timed-frame count went 5 → 40: a scalar that moves 3× with
 run length measures the *window*, not the workload.
 
-⚠️ **The first published explanation for that withdrawal was itself wrong, and
-the correction is the more useful lesson.** It claimed the monitor "fails its
-own control," citing an idle window and a streaming copy that both behaved
-absurdly. But `icc_bwmon` fires on **threshold crossings**, so how well it
-samples depends on the workload's *phase variance*: SGM Configuration B
-generates **825 events** per run (census → cost → aggregation → argmin, changing
-constantly), while an 8-second steady `memcpy` generates **4**. The instrument
-is richly sampled on real workloads and nearly blind on steady ones — and the
-steady copy chosen to discredit it is exactly the case it cannot see. Repeat
-measurements of the same cell read **22.86 / 22.18 GB/s**, and the same monitor
+⚠️ **The first published explanation for that withdrawal was wrong, and so was
+the second — both are kept here because the corrections are the useful part.**
+The first claimed the monitor "fails its own control," citing an idle window and
+a streaming copy that both behaved absurdly. But `icc_bwmon` fires on **threshold
+crossings**, so how well it samples depends on the workload's *phase variance*,
+and the steady copy chosen to discredit it is exactly the case it cannot see.
+Repeat measurements of the same cell read **22.86 / 22.18 GB/s**, and the monitor
 calibrates to **1.8%** of wall-clock when driven by a short *burst* probe, which
-is transition-rich and therefore well sampled. The measurements were sound; the
-control experiment was mis-chosen. **Discrediting an
+is transition-rich and therefore well sampled. **Discrediting an
 instrument with a workload it structurally cannot observe produces a
 confident, well-evidenced, wrong conclusion.**
 
-What remains genuinely open — and why the cell stays blank — is the window: with
-825 samples spanning **0.85 → 37 GB/s across a frame's phases**, the answer
-depends on what you integrate over. A window padded with image loading reads
-~22.8; one dominated by aggregation reads ~36. The cell returns when both sides
-measure the timed region only and agree.
+⚠️ **The second correction is to a number this file itself published.** The claim
+that Configuration B "generates 825 events per run" counted **all three bwmon
+instances together**. Broken out on the DRAM-facing node — `pmu@9091000`,
+`llcc-bwmon` — a 40-frame run yields **35** events; the other ~880 belong to the
+two `cpu-bwmon` nodes on the CPU→LLC path. The steady `memcpy` control yields
+**4** there. The qualitative finding survives — a phase-varying workload samples
+~9× better than a steady one — but the evidence is an order of magnitude thinner
+than was claimed, and quoting 825 as the DRAM-path sample count was wrong.
+
+**Why the cell stays blank is now firmer than "the window".** That hypothesis was
+tested and refused: integrating the timed region only moves the figure by about
+1 GB/s, not the ~50% needed to reconcile two independent harnesses. The real
+discrepancy is the **event rate itself** — two competent harnesses on the same
+board, same binary, same tracepoint, disagree by 3–8× on how many samples the
+monitor even emits. Every integration method argued about downstream of that is
+averaging two different samplings of one signal. **That is a reproducibility
+failure of the instrument, not a disputed number** — which is a cleaner reason to
+withhold a cell than any disagreement about arithmetic.
 
 ⚠️ Separately and genuinely wrong: the Configuration A footnote's claim that
 `icc_bwmon` "cross-confirmed" that board's copy-probe ceiling. Device tree shows

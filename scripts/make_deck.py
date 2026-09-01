@@ -276,8 +276,8 @@ textbox(sB2, .6, 5.72, 12.2, .8,
 textbox(sB2, .6, 6.62, 12.2, .45,
         "GREEN 'measured' = imx9_ddr0 DDR controller (i.MX95), Jetson EMC sampling (net of idle; % of the run's EMC clock), "
         "🔴 The IQ-9075 A78C cell is WITHDRAWN as WINDOW-DEPENDENT: the same workload reads 11.8 / 22.8 / 36.4 GB/s at 5 / mid / 40 timed "
-        "frames. icc_bwmon fires on THRESHOLD CROSSINGS, so sampling tracks a workload's phase variance -- SGM generates 825 events per run, "
-        "a steady memcpy only 4 -- and with 825 samples spanning 0.85-37 GB/s across a frame's phases, the scalar depends on what you "
+        "frames. icc_bwmon fires on THRESHOLD CROSSINGS, so sampling tracks a workload's phase variance -- but on the DRAM-facing node a "
+        "40-frame run emits only 35 events (a steady memcpy 4); the 825 first published counted all three instances. The scalar depends on what you "
         "integrate over. (A first retraction blamed the instrument, using that steady copy as its control: the one workload it cannot see. "
         "Repeat runs read 22.86/22.18, and a burst probe calibrates the monitor to 1.8% of wall-clock.) † = DERIVED: the 4.50 GB/frame streaming model "
         "(cost build+merge 0.27 + 8-path cost reads 0.79 + S-plane RMW 3.15 + argmin 0.20 GB) / measured frame time -- "
@@ -304,16 +304,16 @@ WROWS = [
   "1.8% of wall-clock when driven by a burst probe."),
  ("What actually reconciles them",
   "icc_bwmon fires on THRESHOLD CROSSINGS, so its sampling rate tracks the workload's PHASE VARIANCE. Measured: SGM "
-  "Config B = 825 events per run (census -> cost -> aggregation -> argmin, always changing); 8-second steady memcpy = "
-  "4 events. Richly sampled on real workloads, nearly blind on steady ones."),
+  "Config B = 35 events per run on the DRAM-facing node (825 across all three instances); steady memcpy = 4. "
+  "Phase-varying workloads sample better, but by ~9x, not the 200x the all-instance count implied."),
  ("So the control was the mistake",
   "The steady copy chosen to discredit it is exactly the workload it cannot see: 1.32 GB/s read against a ground-truth "
   "26.59. A BURST probe is transition-rich, which is why it agrees to 1.8% where the sustained copy fails by 20x. "
   "The measurements were sound; one probe could not work."),
  ("What is still open",
-  "Those 825 samples span 0.85 -> 37 GB/s across a frame's phases, so the scalar depends on what you integrate over: "
-  "a window padded with image load reads ~22.8, an aggregation-dominated one ~36. The cell returns when both sides "
-  "integrate the TIMED REGION ONLY, at the same n, and land together."),
+  "REFUTED: integrating the timed region only moves the figure ~1 GB/s, not the ~50% needed. The real gap is the EVENT "
+  "RATE -- two harnesses on one board disagree 3-8x on how many samples the monitor emits. A reproducibility failure of "
+  "the instrument, not a disputed number."),
 ]
 tW = sW.shapes.add_table(len(WROWS)+1, 2, Inches(.6), Inches(1.6), Inches(12.1), Inches(0.4)).table
 for i, w in enumerate((3.5, 8.6)): tW.columns[i].width = Inches(w)
