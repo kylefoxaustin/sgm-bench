@@ -240,7 +240,7 @@ textbox(sB2, .6, 1.1, 12.2, .5,
         "are MEASURED at the i.MX95 DDR controller and two more by Jetson EMC sampling (green); the † cells are DERIVED as 4.50 GB / the "
         "measured frame time. One cell was WITHDRAWN today after its instrument failed a control experiment -- the red row.", 11.5, False, MUTED)
 BW2 = [
- ("NVIDIA RTX 5090",  "9.08 ms",  "505 measured",  "1,385", "36%", "MEASURED (ncu): 4.588 GB/frame -- the 4.50 GB model was within 2%"),
+ ("NVIDIA RTX 5090",  "9.08 ms",  "508 measured",  "1,385", "37%", "MEASURED (ncu): 4.607 GB/frame, 2 runs within 0.8%; the 4.50 GB model was within 2%"),
  ("NVIDIA Thor",      "45.1 ms",  "100 †",  "249",   "24%", "EMC net-of-idle, measured; ≈ the model's 40% freq-normalized"),
  ("NVIDIA Orin AGX",  "72.8 ms",  "62 †",   "175",   "25%", "EMC net-of-idle, measured; memory-bound"),
  ("Thor OFA (ds=2)",  "3.38 ms",  "≈0 measured", "249", "1.4%", "EMC indistinguishable from idle at 296 fps — the block runs in its internals"),
@@ -428,7 +428,7 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseB = 14265.0
-CEIL = {"NVIDIA RTX 5090": "505 / 1,385", "NVIDIA Thor": "100 † / 249", "NVIDIA Orin AGX": "62 † / 175",
+CEIL = {"NVIDIA RTX 5090": "508 / 1,385", "NVIDIA Thor": "100 † / 249", "NVIDIA Orin AGX": "62 † / 175",
         "NVIDIA OFA on Thor (ds=2)": "≈0 / 249", "NVIDIA OFA on Orin (ds=2)": "0.7 / 175",
         "Cortex-A78C x8 (6 threads)": "withdrawn / 27.1", "Cortex-A78C x1": "10.2 † / 27.1",
         "Cortex-A720 x8": "18.9 † / 46.3", "Cortex-A720 x1": "9.6 † / 46.3",
@@ -534,7 +534,7 @@ for c, t in enumerate(("processing unit", "class", "runtime", "fps", "MDE/s (wor
     pr.runs[0].font.bold = True; pr.runs[0].font.color.rgb = RGBColor(0xFF,0xFF,0xFF)
     cell.fill.solid(); cell.fill.fore_color.rgb = RGBColor(0x20,0x21,0x24)
 baseC = 18020.0
-CEILC = {"NVIDIA RTX 5090": "540 / 1,385", "NVIDIA Thor": "107 † / 249", "NVIDIA Orin AGX": "63 † / 175",
+CEILC = {"NVIDIA RTX 5090": "541 / 1,385", "NVIDIA Thor": "107 † / 249", "NVIDIA Orin AGX": "63 † / 175",
          "NVIDIA OFA on Thor (ds=2)": "— / 249", "NVIDIA OFA on Orin (ds=2)": "— / 175",
          "Cortex-A78C x8 (6 threads)": "withdrawn / 27.1", "Cortex-A78C x1": "10.2 † / 27.1",
          "Cortex-A720 x8": "25.4 † / 46.3", "Cortex-A720 x1": "9.4 † / 46.3",

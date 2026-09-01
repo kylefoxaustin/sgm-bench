@@ -1206,9 +1206,17 @@ the model from an assumption into something with a known error bar.
 
 | configuration | modelled GB/frame | MEASURED GB/frame | model / measured |
 |---|---|---|---|
-| A — aggregation phase, 1080p D=64 | 1.46 | **1.299** | 112% |
-| Run 1 — 1920×800, 8 paths, 2 scales | 4.50 | **4.588** | 98% |
-| Run 2 — 1920×1080, 8 paths, 2 scales | 6.07 | **6.452** | 94% |
+| A — aggregation phase, 1080p D=64 | 1.46 | **1.318** | 111% |
+| Run 1 — 1920×800, 8 paths, 2 scales | 4.50 | **4.607** | 98% |
+| Run 2 — 1920×1080, 8 paths, 2 scales | 6.07 | **6.473** | 94% |
+
+⭐ **Each cell is the mean of two independent profiling runs**, prompted by a
+fair challenge — a single run of a pipeline is a sample, not a measurement.
+The byte counts reproduce tightly: **0.8%** apart on Run 1, **0.6%** on Run 2,
+and **2.9%** on Configuration A, which is the loosest precisely because it
+profiles a single frame while the multiscale runs average four. So the counts
+are stable and the cells can be quoted without a spread caveat — but that is
+now something checked rather than assumed.
 
 **The model is good to about ±12%, and its sign is not constant.** It
 *over*-predicts Configuration A because it assumes no cache reuse and the
@@ -1216,10 +1224,10 @@ four-path aggregation kernel gets some; it *under*-predicts the two multiscale
 runs, where the eight-path uint16 S-plane spills whatever reuse existed. Read
 every remaining † cell in this repository as carrying that band.
 
-Achieved bandwidth follows: **520 GB/s** for Configuration A on the aggregation
-phase (against a DERIVED 587 previously published — 13% high, the same 12% model
-error plus rounding), **505 GB/s** on Run 1 and **540 GB/s** on Run 2, whole
-frame. All three are 36–39% of the part's measured 1,385 GB/s ceiling.
+Achieved bandwidth follows: **528 GB/s** for Configuration A on the aggregation
+phase (against a DERIVED 587 previously published — 11% high, the model error),
+**508 GB/s** on Run 1 and **541 GB/s** on Run 2, whole frame. All three are
+37–39% of the part's measured 1,385 GB/s ceiling.
 
 ⚠️ **Two traps worth recording, because both silently produce a wrong number.**
 **(1)** `dram__bytes_read.sum` does not exist on GB202 — it returns `n/a`, and
